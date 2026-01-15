@@ -1,0 +1,13 @@
+# Example Terraform variables for Good Party Databricks Unity Catalog setup
+# Copy this to terraform.tfvars and fill in your values
+
+# Databricks Account ID
+# Get this from https://accounts.cloud.databricks.com/
+databricks_account_id = "00000000-0000-0000-0000-000000000000"
+
+# Databricks workspace ID for account-level operations
+workspace_id = "0000000000000000"
+
+# Databricks CLI profiles (optional - defaults shown)
+databricks_workspace_profile = "DEFAULT"
+databricks_account_profile   = "ACCOUNT"
