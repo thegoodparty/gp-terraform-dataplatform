@@ -1,10 +1,15 @@
 # Account-level groups for Unity Catalog
 # These groups must be created at the account level to grant Unity Catalog permissions
 
-# Data source for dbt_cloud service principal (managed outside Terraform)
+# Data sources for service principals (managed outside Terraform)
 data "databricks_service_principal" "dbt_cloud" {
   provider     = databricks.account
   display_name = "dbt_cloud"
+}
+
+data "databricks_service_principal" "airbyte" {
+  provider     = databricks.account
+  display_name = "airbyte"
 }
 
 # Dynamic mart reader groups from YAML configuration

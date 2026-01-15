@@ -23,6 +23,12 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
+  # airbyte service principal gets catalog access
+  grant {
+    principal  = data.databricks_service_principal.airbyte.application_id
+    privileges = ["USE_CATALOG"]
+  }
+
   depends_on = [
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
