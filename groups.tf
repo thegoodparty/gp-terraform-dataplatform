@@ -3,8 +3,8 @@
 
 # Data source for dbt_cloud service principal (managed outside Terraform)
 data "databricks_service_principal" "dbt_cloud" {
-  provider       = databricks.account
-  application_id = "ed920c40-3b7d-42cb-ad32-0b4d5484c117"
+  provider     = databricks.account
+  display_name = "dbt_cloud"
 }
 
 # Dynamic mart reader groups from YAML configuration
