@@ -78,7 +78,8 @@ resource "databricks_grants" "mart_schemas" {
     ]
   }
 
-  # dbt_cloud service principal gets full access to create, manage, and read tables
+  # dbt_cloud service principal gets full access to create, manage, and read tables/views
+  # CREATE_TABLE covers both tables and views in privilege model 1.0
   # SELECT is required for incremental models, tests, MERGE operations, and snapshots
   grant {
     principal = data.databricks_service_principal.dbt_cloud.application_id
