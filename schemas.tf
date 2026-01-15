@@ -9,7 +9,6 @@ resource "databricks_schema" "marts" {
   properties = {
     managed_by = "terraform"
     purpose    = "mart"
-    owners     = join(",", each.value.owners)
   }
 
   lifecycle {

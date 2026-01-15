@@ -16,8 +16,6 @@ Edit `config/marts.yaml`:
 marts:
   - name: newmart
     description: "Your mart description"
-    owners:
-      - analytics-team@goodparty.org
 ```
 
 Run:

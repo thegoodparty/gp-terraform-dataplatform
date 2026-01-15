@@ -1,11 +1,7 @@
 marts:
   - name: civics
     description: "Analytics mart for entities related to elections and elected offices"
-    owners:
-      - analytics-team@goodparty.org
 
   - name: research
     description: "Analytics mart for research and reporting"
-    owners:
-      - analytics-team@goodparty.org
 
