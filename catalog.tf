@@ -9,7 +9,7 @@ resource "databricks_catalog" "main" {
 
   lifecycle {
     prevent_destroy = true
-    # Ignore changes to preserve existing catalog configuration
-    ignore_changes = [storage_root, comment, properties]
+    # Ignore all changes to preserve existing production catalog configuration
+    ignore_changes = all
   }
 }

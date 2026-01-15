@@ -29,13 +29,30 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
+  # Existing groups get catalog access
+  grant {
+    principal  = data.databricks_group.account_users.display_name
+    privileges = ["USE_CATALOG"]
+  }
+
+  grant {
+    principal  = data.databricks_group.admin_group.display_name
+    privileges = ["USE_CATALOG"]
+  }
+
+  grant {
+    principal  = data.databricks_group.data_users.display_name
+    privileges = ["USE_CATALOG"]
+  }
+
   depends_on = [
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
   ]
 
   lifecycle {
-    ignore_changes = [grant]
+    # Ignore all changes to grants to allow manual management in production
+    ignore_changes = all
   }
 }
 
