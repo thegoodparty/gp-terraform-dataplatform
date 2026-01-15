@@ -17,10 +17,10 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
-  # dbt_cloud service principal gets catalog access
+  # dbt_cloud service principal gets catalog access and read access to all objects
   grant {
     principal  = data.databricks_service_principal.dbt_cloud.application_id
-    privileges = ["USE_CATALOG"]
+    privileges = ["USE_CATALOG", "SELECT"]
   }
 
   # airbyte service principal gets catalog access
@@ -78,16 +78,15 @@ resource "databricks_grants" "mart_schemas" {
     ]
   }
 
-  # dbt_cloud service principal gets full access to create, manage, and read tables/views
+  # dbt_cloud service principal gets write access to create and manage tables/views
   # CREATE_TABLE covers both tables and views in privilege model 1.0
-  # SELECT is required for incremental models, tests, MERGE operations, and snapshots
+  # SELECT is granted at catalog level for read access across all schemas
   grant {
     principal = data.databricks_service_principal.dbt_cloud.application_id
     privileges = [
       "USE_SCHEMA",
       "CREATE_TABLE",
-      "MODIFY",
-      "SELECT"
+      "MODIFY"
     ]
   }
 
