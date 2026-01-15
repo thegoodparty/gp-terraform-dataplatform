@@ -27,6 +27,10 @@ resource "databricks_grants" "catalog_main" {
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
   ]
+
+  lifecycle {
+    ignore_changes = [grant]
+  }
 }
 
 # Mart schema permissions - each reader group and dbt-developers get read access
