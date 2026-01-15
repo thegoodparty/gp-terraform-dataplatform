@@ -78,13 +78,15 @@ resource "databricks_grants" "mart_schemas" {
     ]
   }
 
-  # dbt_cloud service principal gets full write access to create and manage tables
+  # dbt_cloud service principal gets full access to create, manage, and read tables
+  # SELECT is required for incremental models, tests, MERGE operations, and snapshots
   grant {
     principal = data.databricks_service_principal.dbt_cloud.application_id
     privileges = [
       "USE_SCHEMA",
       "CREATE_TABLE",
-      "MODIFY"
+      "MODIFY",
+      "SELECT"
     ]
   }
 
