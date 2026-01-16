@@ -17,10 +17,10 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
-  # dbt_cloud service principal gets catalog access, schema access, and read access to all objects
+  # dbt_cloud service principal gets full access across entire catalog
   grant {
     principal  = data.databricks_service_principal.dbt_cloud.application_id
-    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "MODIFY", "CREATE_TABLE"]
   }
 
   # airbyte service principal gets catalog access
@@ -42,18 +42,31 @@ resource "databricks_grants" "catalog_main" {
 
   grant {
     principal  = data.databricks_group.data_users.display_name
-    privileges = ["USE_CATALOG"]
+    privileges = ["USE_CATALOG", "USE_SCHEMA"]
+  }
+
+  # ai-owners group gets schema access across entire catalog
+  grant {
+    principal  = data.databricks_group.ai_owners.display_name
+    privileges = ["USE_SCHEMA"]
+  }
+
+  # data-engineers group gets read access across entire catalog
+  grant {
+    principal  = data.databricks_group.data_engineers.display_name
+    privileges = ["SELECT"]
+  }
+
+  # ai-infra service principal gets schema access and read access across entire catalog
+  grant {
+    principal  = data.databricks_service_principal.ai_infra.application_id
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
   }
 
   depends_on = [
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
   ]
-
-  lifecycle {
-    # Ignore all changes to grants to allow manual management in production
-    ignore_changes = all
-  }
 }
 
 # Mart schema permissions - each reader group and dbt-developers get read access

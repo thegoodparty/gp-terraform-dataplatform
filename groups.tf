@@ -12,6 +12,11 @@ data "databricks_service_principal" "airbyte" {
   display_name = "airbyte"
 }
 
+data "databricks_service_principal" "ai_infra" {
+  provider     = databricks.account
+  display_name = "ai-infra"
+}
+
 # Data sources for existing groups (managed outside Terraform)
 data "databricks_group" "account_users" {
   provider     = databricks.account
@@ -26,6 +31,16 @@ data "databricks_group" "admin_group" {
 data "databricks_group" "data_users" {
   provider     = databricks.account
   display_name = "data users"
+}
+
+data "databricks_group" "ai_owners" {
+  provider     = databricks.account
+  display_name = "ai-owners"
+}
+
+data "databricks_group" "data_engineers" {
+  provider     = databricks.account
+  display_name = "data-engineers"
 }
 
 # Dynamic mart reader groups from YAML configuration
