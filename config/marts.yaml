@@ -1,0 +1,7 @@
+marts:
+  - name: civics
+    description: "Analytics mart for entities related to elections and elected offices"
+
+  - name: research
+    description: "Analytics mart for research and reporting"
+
