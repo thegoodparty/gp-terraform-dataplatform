@@ -17,10 +17,10 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
-  # dbt_cloud service principal gets catalog access and read access to all objects
+  # dbt_cloud service principal gets catalog access, schema access, and read access to all objects
   grant {
     principal  = data.databricks_service_principal.dbt_cloud.application_id
-    privileges = ["USE_CATALOG", "SELECT"]
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
   }
 
   # airbyte service principal gets catalog access
