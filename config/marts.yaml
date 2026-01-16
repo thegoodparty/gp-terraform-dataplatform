@@ -2,6 +2,6 @@ marts:
   - name: civics
     description: "Analytics mart for entities related to elections and elected offices"
 
-  - name: research
-    description: "Analytics mart for research and reporting"
+  - name: mban2026
+    description: "Mart for DEID voter data for 2026 MBAN students"
 
