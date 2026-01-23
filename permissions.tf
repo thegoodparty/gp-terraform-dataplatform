@@ -11,10 +11,10 @@ resource "databricks_grants" "catalog_main" {
     }
   }
 
-  # dbt-developers get catalog access
+  # dbt-developers get catalog access and can create schemas
   grant {
     principal  = databricks_group.dbt_developers_account.display_name
-    privileges = ["USE_CATALOG"]
+    privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
   }
 
   # dbt_cloud service principal gets full access across entire catalog
