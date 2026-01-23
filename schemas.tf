@@ -10,7 +10,7 @@ resource "databricks_schema" "exports_zapier" {
   }
 
   lifecycle {
-    prevent_destroy = false
+    prevent_destroy = true
   }
 }
 
