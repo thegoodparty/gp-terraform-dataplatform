@@ -1,3 +1,19 @@
+# Zapier exports schema for data exported to Zapier integrations
+resource "databricks_schema" "zapier_exports" {
+  catalog_name = databricks_catalog.main.name
+  name         = "zapier_exports"
+  comment      = "Schema for data exported to Zapier integrations"
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "exports"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 # Dynamic mart schemas from YAML configuration
 resource "databricks_schema" "marts" {
   for_each = local.marts_map

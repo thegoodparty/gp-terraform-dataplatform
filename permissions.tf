@@ -63,6 +63,12 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
   }
 
+  # zapier service principal gets catalog access for zapier_exports schema
+  grant {
+    principal  = data.databricks_service_principal.zapier.application_id
+    privileges = ["USE_CATALOG"]
+  }
+
   depends_on = [
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
@@ -105,6 +111,45 @@ resource "databricks_grants" "mart_schemas" {
 
   depends_on = [
     databricks_group.mart_readers_account,
+    databricks_group.dbt_developers_account
+  ]
+}
+
+# Zapier exports schema permissions
+resource "databricks_grants" "zapier_exports_schema" {
+  schema = databricks_schema.zapier_exports.id
+
+  # zapier service principal gets read-only access
+  grant {
+    principal = data.databricks_service_principal.zapier.application_id
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT"
+    ]
+  }
+
+  # dbt-developers get create/modify access
+  grant {
+    principal = databricks_group.dbt_developers_account.display_name
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT",
+      "CREATE_TABLE",
+      "MODIFY"
+    ]
+  }
+
+  # dbt_cloud service principal also gets write access for automation
+  grant {
+    principal = data.databricks_service_principal.dbt_cloud.application_id
+    privileges = [
+      "USE_SCHEMA",
+      "CREATE_TABLE",
+      "MODIFY"
+    ]
+  }
+
+  depends_on = [
     databricks_group.dbt_developers_account
   ]
 }

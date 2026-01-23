@@ -17,6 +17,11 @@ data "databricks_service_principal" "ai_infra" {
   display_name = "ai-infra"
 }
 
+data "databricks_service_principal" "zapier" {
+  provider     = databricks.account
+  display_name = "zapier"
+}
+
 # Data sources for existing groups (managed outside Terraform)
 data "databricks_group" "account_users" {
   provider     = databricks.account
