@@ -1,7 +1,7 @@
 # Zapier exports schema for data exported to Zapier integrations
-resource "databricks_schema" "zapier_exports" {
+resource "databricks_schema" "exports_zapier" {
   catalog_name = databricks_catalog.main.name
-  name         = "zapier_exports"
+  name         = "exports_zapier"
   comment      = "Schema for data exported to Zapier integrations"
 
   properties = {
@@ -10,7 +10,7 @@ resource "databricks_schema" "zapier_exports" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 

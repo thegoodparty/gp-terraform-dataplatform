@@ -48,6 +48,11 @@ data "databricks_group" "data_engineers" {
   display_name = "data-engineers"
 }
 
+data "databricks_group" "dbt_users" {
+  provider     = databricks.account
+  display_name = "dbt-users"
+}
+
 # Dynamic mart reader groups from YAML configuration
 resource "databricks_group" "mart_readers_account" {
   for_each = local.marts_map
