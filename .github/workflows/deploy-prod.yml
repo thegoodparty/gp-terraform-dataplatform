@@ -1,33 +1,36 @@
-name: Deploy Production Astro
+name: Terraform Plan
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '*.tf'
+      - 'config/*.tfvars'
+      - 'config/*.yaml'
+      - '.github/workflows/deploy-prod.yml'
+
   push:
     branches:
       - main
     paths:
-      - 'astro.tf'
-      - 'variables.tf'
-      - 'config/prod.tfvars'
+      - '*.tf'
+      - 'config/*.tfvars'
+      - 'config/*.yaml'
       - '.github/workflows/deploy-prod.yml'
 
   workflow_dispatch:
-    inputs:
-      action:
-        description: 'Terraform action to perform'
-        required: true
-        default: 'plan'
-        type: choice
-        options:
-          - plan
-          - apply
 
 env:
   TF_VERSION: '1.14.4'
 
 jobs:
   terraform:
-    name: Terraform ${{ github.event.inputs.action || 'apply' }}
+    name: Terraform Plan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout
@@ -37,6 +40,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
 
       - name: Create terraform.tfvars
         run: |
@@ -52,6 +56,7 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
+        id: plan
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
         run: |
@@ -62,8 +67,92 @@ jobs:
             -target=astro_api_token.deployment_cicd \
             -out=tfplan
 
-      - name: Terraform Apply
-        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
-        env:
-          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
-        run: terraform apply -auto-approve tfplan
+      - name: Analyze Plan
+        id: analyze
+        run: |
+          # Convert plan to JSON and extract resource changes
+          terraform show -json tfplan > tfplan.json
+
+          # Count changes by action type
+          ADDS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]) | not)] | length' tfplan.json)
+          CHANGES=$(jq '[.resource_changes[]? | select(.change.actions | contains(["update"]))] | length' tfplan.json)
+          DESTROYS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["delete"]))] | length' tfplan.json)
+          REPLACES=$(jq '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]))] | length' tfplan.json)
+
+          echo "adds=$ADDS" >> $GITHUB_OUTPUT
+          echo "changes=$CHANGES" >> $GITHUB_OUTPUT
+          echo "destroys=$DESTROYS" >> $GITHUB_OUTPUT
+          echo "replaces=$REPLACES" >> $GITHUB_OUTPUT
+
+          # Build summary
+          echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Action | Count | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Create | $ADDS | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Update | $CHANGES | ⚠️ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Replace | $REPLACES | ❌ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Destroy | $DESTROYS | ❌ |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$DESTROYS" -gt 0 ] || [ "$REPLACES" -gt 0 ]; then
+            echo "### ⚠️ Resources to be destroyed or replaced:" >> $GITHUB_STEP_SUMMARY
+            jq -r '.resource_changes[]? | select(.change.actions | contains(["delete"])) | "- `\(.address)`"' tfplan.json >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**This plan requires manual review before applying.**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$ADDS" -eq 0 ] && [ "$CHANGES" -eq 0 ] && [ "$DESTROYS" -eq 0 ] && [ "$REPLACES" -eq 0 ]; then
+            echo "### ✅ No changes detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const adds = ${{ steps.analyze.outputs.adds }};
+            const changes = ${{ steps.analyze.outputs.changes }};
+            const destroys = ${{ steps.analyze.outputs.destroys }};
+            const replaces = ${{ steps.analyze.outputs.replaces }};
+
+            let status = '✅ Safe to merge';
+            if (destroys > 0 || replaces > 0) {
+              status = '❌ Requires manual review - resources will be destroyed';
+            } else if (changes > 0) {
+              status = '⚠️ Review recommended - resources will be modified';
+            }
+
+            const body = `## Terraform Plan Results
+
+            | Action | Count | Status |
+            |--------|-------|--------|
+            | Create | ${adds} | ✅ |
+            | Update | ${changes} | ⚠️ |
+            | Replace | ${replaces} | ❌ |
+            | Destroy | ${destroys} | ❌ |
+
+            **${status}**
+
+            <details>
+            <summary>What do these mean?</summary>
+
+            - **Create**: New resources will be added
+            - **Update**: Existing resources will be modified in-place
+            - **Replace**: Resources will be destroyed and recreated (data loss possible)
+            - **Destroy**: Resources will be permanently deleted
+
+            </details>`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Fail on Destroy
+        if: steps.analyze.outputs.destroys != '0' || steps.analyze.outputs.replaces != '0'
+        run: |
+          echo "::error::Plan contains ${{ steps.analyze.outputs.destroys }} destroy(s) and ${{ steps.analyze.outputs.replaces }} replace(s). Manual review required."
+          exit 1

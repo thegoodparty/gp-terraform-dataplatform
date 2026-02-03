@@ -57,6 +57,18 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["SELECT"]
   }
 
+  # dbt-users group gets catalog access and can create schemas
+  grant {
+    principal  = data.databricks_group.dbt_users.display_name
+    privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
+  }
+
+  # zapier service principal gets catalog access
+  grant {
+    principal  = data.databricks_service_principal.zapier.application_id
+    privileges = ["USE_CATALOG"]
+  }
+
   # ai-infra service principal gets schema access and read access across entire catalog
   grant {
     principal  = data.databricks_service_principal.ai_infra.application_id
