@@ -78,10 +78,22 @@ jobs:
           DESTROYS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["delete"]))] | length' tfplan.json)
           REPLACES=$(jq '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]))] | length' tfplan.json)
 
+          # Get resource lists
+          ADD_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]) | not) | .address] | join("\n")' tfplan.json)
+          CHANGE_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["update"])) | .address] | join("\n")' tfplan.json)
+          DESTROY_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["delete"])) | select(.change.actions | contains(["create"]) | not) | .address] | join("\n")' tfplan.json)
+          REPLACE_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"])) | .address] | join("\n")' tfplan.json)
+
           echo "adds=$ADDS" >> $GITHUB_OUTPUT
           echo "changes=$CHANGES" >> $GITHUB_OUTPUT
           echo "destroys=$DESTROYS" >> $GITHUB_OUTPUT
           echo "replaces=$REPLACES" >> $GITHUB_OUTPUT
+
+          # Store lists in files for the PR comment step
+          echo "$ADD_LIST" > /tmp/add_list.txt
+          echo "$CHANGE_LIST" > /tmp/change_list.txt
+          echo "$DESTROY_LIST" > /tmp/destroy_list.txt
+          echo "$REPLACE_LIST" > /tmp/replace_list.txt
 
           # Build summary
           echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
@@ -94,11 +106,28 @@ jobs:
           echo "| Destroy | $DESTROYS | ❌ |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "$DESTROYS" -gt 0 ] || [ "$REPLACES" -gt 0 ]; then
-            echo "### ⚠️ Resources to be destroyed or replaced:" >> $GITHUB_STEP_SUMMARY
-            jq -r '.resource_changes[]? | select(.change.actions | contains(["delete"])) | "- `\(.address)`"' tfplan.json >> $GITHUB_STEP_SUMMARY
+          if [ "$ADDS" -gt 0 ]; then
+            echo "### Resources to create:" >> $GITHUB_STEP_SUMMARY
+            echo "$ADD_LIST" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`" >> $GITHUB_STEP_SUMMARY; done
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**This plan requires manual review before applying.**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$CHANGES" -gt 0 ]; then
+            echo "### Resources to update:" >> $GITHUB_STEP_SUMMARY
+            echo "$CHANGE_LIST" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`" >> $GITHUB_STEP_SUMMARY; done
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$REPLACES" -gt 0 ]; then
+            echo "### ⚠️ Resources to replace (destroy + create):" >> $GITHUB_STEP_SUMMARY
+            echo "$REPLACE_LIST" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`" >> $GITHUB_STEP_SUMMARY; done
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$DESTROYS" -gt 0 ]; then
+            echo "### ❌ Resources to destroy:" >> $GITHUB_STEP_SUMMARY
+            echo "$DESTROY_LIST" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`" >> $GITHUB_STEP_SUMMARY; done
+            echo "" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "$ADDS" -eq 0 ] && [ "$CHANGES" -eq 0 ] && [ "$DESTROYS" -eq 0 ] && [ "$REPLACES" -eq 0 ]; then
@@ -110,10 +139,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
             const adds = ${{ steps.analyze.outputs.adds }};
             const changes = ${{ steps.analyze.outputs.changes }};
             const destroys = ${{ steps.analyze.outputs.destroys }};
             const replaces = ${{ steps.analyze.outputs.replaces }};
+
+            const addList = fs.readFileSync('/tmp/add_list.txt', 'utf8').trim();
+            const changeList = fs.readFileSync('/tmp/change_list.txt', 'utf8').trim();
+            const destroyList = fs.readFileSync('/tmp/destroy_list.txt', 'utf8').trim();
+            const replaceList = fs.readFileSync('/tmp/replace_list.txt', 'utf8').trim();
 
             let status = '✅ Safe to merge';
             if (destroys > 0 || replaces > 0) {
@@ -121,6 +156,14 @@ jobs:
             } else if (changes > 0) {
               status = '⚠️ Review recommended - resources will be modified';
             }
+
+            const formatList = (list) => list ? list.split('\n').filter(x => x).map(x => `- \`${x}\``).join('\n') : '';
+
+            let details = '';
+            if (adds > 0) details += `\n### Resources to create:\n${formatList(addList)}\n`;
+            if (changes > 0) details += `\n### Resources to update:\n${formatList(changeList)}\n`;
+            if (replaces > 0) details += `\n### ⚠️ Resources to replace:\n${formatList(replaceList)}\n`;
+            if (destroys > 0) details += `\n### ❌ Resources to destroy:\n${formatList(destroyList)}\n`;
 
             const body = `## Terraform Plan Results
 
@@ -132,7 +175,7 @@ jobs:
             | Destroy | ${destroys} | ❌ |
 
             **${status}**
-
+            ${details}
             <details>
             <summary>What do these mean?</summary>
 
