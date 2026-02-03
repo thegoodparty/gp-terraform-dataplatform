@@ -45,9 +45,9 @@ jobs:
       - name: Create terraform.tfvars
         run: |
           cat > terraform.tfvars << EOF
-          databricks_account_id = "${{ secrets.DATABRICKS_ACCOUNT_ID }}"
-          workspace_id          = "${{ secrets.DATABRICKS_WORKSPACE_ID }}"
-          astro_organization_id = "${{ secrets.ASTRO_ORGANIZATION_ID }}"
+          databricks_account_id = "${{ vars.DATABRICKS_ACCOUNT_ID }}"
+          workspace_id          = "${{ vars.DATABRICKS_WORKSPACE_ID }}"
+          astro_organization_id = "${{ vars.ASTRO_ORGANIZATION_ID }}"
           EOF
 
       - name: Terraform Init
