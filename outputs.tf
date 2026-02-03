@@ -56,10 +56,3 @@ output "astro_deployments" {
   }
 }
 
-output "astro_deployment_cicd_tokens" {
-  description = "CI/CD API token IDs for each deployment (token values are sensitive)"
-  value = {
-    for name, token in astro_api_token.deployment_cicd :
-    name => token.id
-  }
-}

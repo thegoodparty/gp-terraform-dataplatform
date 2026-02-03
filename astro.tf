@@ -85,26 +85,3 @@ resource "astro_deployment" "environments" {
   }
 }
 
-# -----------------------------------------------------------------------------
-# Deployment API Tokens (for CI/CD)
-# -----------------------------------------------------------------------------
-
-resource "astro_api_token" "deployment_cicd" {
-  for_each = var.astro_environments
-
-  name        = "${each.value.name}-cicd"
-  description = "CI/CD token for ${each.value.name} deployment"
-  type        = "DEPLOYMENT"
-
-  roles = [
-    {
-      entity_type = "DEPLOYMENT"
-      entity_id   = astro_deployment.environments[each.key].id
-      role        = "DEPLOYMENT_ADMIN"
-    }
-  ]
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}

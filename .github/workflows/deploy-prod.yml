@@ -64,7 +64,6 @@ jobs:
             -var-file=config/prod.tfvars \
             -target=astro_workspace.data_engineering \
             -target=astro_deployment.environments \
-            -target=astro_api_token.deployment_cicd \
             -out=tfplan
 
       - name: Analyze Plan
