@@ -10,3 +10,9 @@ provider "databricks" {
   account_id = var.databricks_account_id
   profile    = var.databricks_account_profile
 }
+
+# Astronomer provider for Astro Airflow deployments
+# Token should be set via ASTRO_API_TOKEN environment variable
+provider "astro" {
+  organization_id = var.astro_organization_id
+}

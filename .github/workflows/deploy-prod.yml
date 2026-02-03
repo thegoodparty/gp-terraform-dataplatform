@@ -1,0 +1,69 @@
+name: Deploy Production Astro
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'astro.tf'
+      - 'variables.tf'
+      - 'config/prod.tfvars'
+      - '.github/workflows/deploy-prod.yml'
+
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform action to perform'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+
+env:
+  TF_VERSION: '1.14.4'
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action || 'apply' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Create terraform.tfvars
+        run: |
+          cat > terraform.tfvars << EOF
+          databricks_account_id = "${{ secrets.DATABRICKS_ACCOUNT_ID }}"
+          workspace_id          = "${{ secrets.DATABRICKS_WORKSPACE_ID }}"
+          astro_organization_id = "${{ secrets.ASTRO_ORGANIZATION_ID }}"
+          EOF
+
+      - name: Terraform Init
+        env:
+          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
+        run: terraform init
+
+      - name: Terraform Plan
+        env:
+          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
+        run: |
+          terraform plan \
+            -var-file=config/prod.tfvars \
+            -target=astro_workspace.data_engineering \
+            -target=astro_deployment.environments \
+            -target=astro_api_token.deployment_cicd \
+            -out=tfplan
+
+      - name: Terraform Apply
+        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
+        env:
+          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
+        run: terraform apply -auto-approve tfplan

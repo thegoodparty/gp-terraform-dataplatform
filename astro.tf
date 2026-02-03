@@ -1,0 +1,110 @@
+# =============================================================================
+# Astronomer (Astro) Resources
+# =============================================================================
+# Manages Astro workspace, deployments, and related resources for Airflow
+
+# -----------------------------------------------------------------------------
+# Workspace
+# -----------------------------------------------------------------------------
+
+resource "astro_workspace" "data_engineering" {
+  name                  = "Data Engineering"
+  description           = "Data Engineering workspace for Airflow deployments"
+  cicd_enforced_default = false # Requires higher Astro plan tier
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Deployments
+# -----------------------------------------------------------------------------
+
+resource "astro_deployment" "environments" {
+  for_each = var.astro_environments
+
+  name                    = each.value.name
+  description             = each.value.description
+  type                    = each.value.type
+  cloud_provider          = var.astro_cloud_provider
+  region                  = var.astro_region
+  workspace_id            = astro_workspace.data_engineering.id
+  contact_emails          = var.astro_contact_emails
+  executor                = each.value.executor
+  is_cicd_enforced        = each.value.is_cicd_enforced
+  is_dag_deploy_enabled   = each.value.is_dag_deploy_enabled
+  is_development_mode     = each.value.is_development_mode
+  is_high_availability    = each.value.is_high_availability
+  scheduler_size          = each.value.scheduler_size
+  resource_quota_cpu      = each.value.resource_quota_cpu
+  resource_quota_memory   = each.value.resource_quota_memory
+  default_task_pod_cpu    = each.value.default_task_pod_cpu
+  default_task_pod_memory = each.value.default_task_pod_memory
+
+  environment_variables = [
+    {
+      key       = "ENVIRONMENT"
+      value     = each.key
+      is_secret = false
+    },
+    {
+      key       = "AIRFLOW__CORE__DEFAULT_TIMEZONE"
+      value     = "America/Los_Angeles"
+      is_secret = false
+    }
+  ]
+
+  worker_queues = [
+    for wq in each.value.worker_queues : {
+      name               = wq.name
+      is_default         = wq.is_default
+      astro_machine      = wq.astro_machine
+      max_worker_count   = wq.max_worker_count
+      min_worker_count   = wq.min_worker_count
+      worker_concurrency = wq.worker_concurrency
+    }
+  ]
+
+  # Only set scaling_spec if there are hibernation schedules
+  scaling_spec = length(each.value.hibernation_schedules) > 0 ? {
+    hibernation_spec = {
+      schedules = [
+        for schedule in each.value.hibernation_schedules : {
+          hibernate_at_cron = schedule.hibernate_at_cron
+          wake_at_cron      = schedule.wake_at_cron
+          description       = schedule.description
+          is_enabled        = schedule.is_enabled
+        }
+      ]
+    }
+  } : null
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Deployment API Tokens (for CI/CD)
+# -----------------------------------------------------------------------------
+
+resource "astro_api_token" "deployment_cicd" {
+  for_each = var.astro_environments
+
+  name        = "${each.value.name}-cicd"
+  description = "CI/CD token for ${each.value.name} deployment"
+  type        = "DEPLOYMENT"
+
+  roles = [
+    {
+      entity_type = "DEPLOYMENT"
+      entity_id   = astro_deployment.environments[each.key].id
+      role        = "DEPLOYMENT_ADMIN"
+    }
+  ]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}

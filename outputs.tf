@@ -28,3 +28,38 @@ output "dbt_developers_group" {
   description = "Display name of dbt-developers account-level group"
   value       = databricks_group.dbt_developers_account.display_name
 }
+
+# =============================================================================
+# Astronomer (Astro) Outputs
+# =============================================================================
+
+output "astro_workspace_id" {
+  description = "Astro workspace ID"
+  value       = astro_workspace.data_engineering.id
+}
+
+output "astro_workspace_name" {
+  description = "Astro workspace name"
+  value       = astro_workspace.data_engineering.name
+}
+
+output "astro_deployments" {
+  description = "Astro deployment details"
+  value = {
+    for name, deployment in astro_deployment.environments :
+    name => {
+      id           = deployment.id
+      name         = deployment.name
+      airflow_url  = "https://${deployment.id}.astronomer.run"
+      workspace_id = deployment.workspace_id
+    }
+  }
+}
+
+output "astro_deployment_cicd_tokens" {
+  description = "CI/CD API token IDs for each deployment (token values are sensitive)"
+  value = {
+    for name, token in astro_api_token.deployment_cicd :
+    name => token.id
+  }
+}

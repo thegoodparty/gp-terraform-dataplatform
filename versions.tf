@@ -6,5 +6,9 @@ terraform {
       source  = "databricks/databricks"
       version = "~> 1.50"
     }
+    astro = {
+      source  = "astronomer/astro"
+      version = "~> 1.0"
+    }
   }
 }
