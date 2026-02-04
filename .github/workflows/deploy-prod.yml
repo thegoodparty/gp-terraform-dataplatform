@@ -1,4 +1,4 @@
-name: Terraform Plan
+name: Terraform CI/CD
 
 on:
   pull_request:
@@ -26,7 +26,7 @@ env:
 
 jobs:
   terraform:
-    name: Terraform Plan
+    name: Terraform
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -200,8 +200,14 @@ jobs:
               body: body
             });
 
-      - name: Fail on Destroy
-        if: steps.analyze.outputs.destroys != '0' || steps.analyze.outputs.replaces != '0'
+      - name: Fail on Destroy (PR only)
+        if: github.event_name == 'pull_request' && (steps.analyze.outputs.destroys != '0' || steps.analyze.outputs.replaces != '0')
         run: |
           echo "::error::Plan contains ${{ steps.analyze.outputs.destroys }} destroy(s) and ${{ steps.analyze.outputs.replaces }} replace(s). Manual review required."
           exit 1
+
+      - name: Terraform Apply
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
+        run: terraform apply -auto-approve tfplan
