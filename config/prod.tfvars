@@ -16,7 +16,6 @@ astro_environments = {
     resource_quota_cpu      = "10"
     resource_quota_memory   = "20Gi"
     scheduler_size          = "SMALL"
-    worker_queues           = []
     hibernation_schedules = [
       {
         hibernate_at_cron = "0 1 * * 2,3,4,5,6"
@@ -40,7 +39,6 @@ astro_environments = {
     resource_quota_cpu      = "10"
     resource_quota_memory   = "20Gi"
     scheduler_size          = "SMALL"
-    worker_queues           = []
     hibernation_schedules   = []
   }
 }

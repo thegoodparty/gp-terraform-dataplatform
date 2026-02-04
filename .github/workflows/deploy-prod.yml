@@ -69,8 +69,6 @@ jobs:
         run: |
           terraform plan \
             -var-file=config/prod.tfvars \
-            -target=astro_workspace.data_engineering \
-            -target=astro_deployment.environments \
             -out=tfplan
 
       - name: Analyze Plan
@@ -82,7 +80,7 @@ jobs:
           # Count changes by action type
           ADDS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]) | not)] | length' tfplan.json)
           CHANGES=$(jq '[.resource_changes[]? | select(.change.actions | contains(["update"]))] | length' tfplan.json)
-          DESTROYS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["delete"]))] | length' tfplan.json)
+          DESTROYS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["delete"])) | select(.change.actions | contains(["create"]) | not)] | length' tfplan.json)
           REPLACES=$(jq '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]))] | length' tfplan.json)
 
           # Get resource lists
@@ -172,28 +170,48 @@ jobs:
             if (replaces > 0) details += `\n### ⚠️ Resources to replace:\n${formatList(replaceList)}\n`;
             if (destroys > 0) details += `\n### ❌ Resources to destroy:\n${formatList(destroyList)}\n`;
 
-            const body = `## Terraform Plan Results
+            const marker = '<!-- terraform-plan-comment -->';
+            const body = `${marker}
+## Terraform Plan Results
 
-            | Action | Count | Status |
-            |--------|-------|--------|
-            | Create | ${adds} | ✅ |
-            | Update | ${changes} | ⚠️ |
-            | Replace | ${replaces} | ❌ |
-            | Destroy | ${destroys} | ❌ |
+| Action | Count | Status |
+|--------|-------|--------|
+| Create | ${adds} | ✅ |
+| Update | ${changes} | ⚠️ |
+| Replace | ${replaces} | ❌ |
+| Destroy | ${destroys} | ❌ |
 
-            **${status}**
-            ${details}
-            <details>
-            <summary>What do these mean?</summary>
+**${status}**
+${details}
+<details>
+<summary>What do these mean?</summary>
 
-            - **Create**: New resources will be added
-            - **Update**: Existing resources will be modified in-place
-            - **Replace**: Resources will be destroyed and recreated (data loss possible)
-            - **Destroy**: Resources will be permanently deleted
+- **Create**: New resources will be added
+- **Update**: Existing resources will be modified in-place
+- **Replace**: Resources will be destroyed and recreated (data loss possible)
+- **Destroy**: Resources will be permanently deleted
 
-            </details>`;
+</details>`;
 
-            github.rest.issues.createComment({
+            // Find and delete previous terraform plan comments
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            for (const comment of comments) {
+              if (comment.body.includes(marker)) {
+                await github.rest.issues.deleteComment({
+                  comment_id: comment.id,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo
+                });
+              }
+            }
+
+            // Create new comment
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,

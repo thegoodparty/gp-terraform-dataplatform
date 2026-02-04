@@ -123,13 +123,6 @@ The workflow triggers on:
 - Push to `main` (auto-apply)
 - Manual dispatch (plan or apply)
 
-### CI/CD Integration
-
-Terraform creates deployment API tokens automatically:
-```bash
-terraform output astro_deployment_cicd_tokens
-```
-
 ---
 
 ## File Structure

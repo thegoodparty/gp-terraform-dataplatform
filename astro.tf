@@ -50,7 +50,7 @@ resource "astro_deployment" "environments" {
     },
     {
       key       = "AIRFLOW__CORE__DEFAULT_TIMEZONE"
-      value     = "America/Los_Angeles"
+      value     = "America/New_York"
       is_secret = false
     }
   ]
