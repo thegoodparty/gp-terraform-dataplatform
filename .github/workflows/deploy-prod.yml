@@ -171,27 +171,29 @@ jobs:
             if (destroys > 0) details += `\n### ❌ Resources to destroy:\n${formatList(destroyList)}\n`;
 
             const marker = '<!-- terraform-plan-comment -->';
-            const body = `${marker}
-## Terraform Plan Results
-
-| Action | Count | Status |
-|--------|-------|--------|
-| Create | ${adds} | ✅ |
-| Update | ${changes} | ⚠️ |
-| Replace | ${replaces} | ❌ |
-| Destroy | ${destroys} | ❌ |
-
-**${status}**
-${details}
-<details>
-<summary>What do these mean?</summary>
-
-- **Create**: New resources will be added
-- **Update**: Existing resources will be modified in-place
-- **Replace**: Resources will be destroyed and recreated (data loss possible)
-- **Destroy**: Resources will be permanently deleted
-
-</details>`;
+            const body = [
+              marker,
+              '## Terraform Plan Results',
+              '',
+              '| Action | Count | Status |',
+              '|--------|-------|--------|',
+              `| Create | ${adds} | ✅ |`,
+              `| Update | ${changes} | ⚠️ |`,
+              `| Replace | ${replaces} | ❌ |`,
+              `| Destroy | ${destroys} | ❌ |`,
+              '',
+              `**${status}**`,
+              details,
+              '<details>',
+              '<summary>What do these mean?</summary>',
+              '',
+              '- **Create**: New resources will be added',
+              '- **Update**: Existing resources will be modified in-place',
+              '- **Replace**: Resources will be destroyed and recreated (data loss possible)',
+              '- **Destroy**: Resources will be permanently deleted',
+              '',
+              '</details>'
+            ].join('\n');
 
             // Find and delete previous terraform plan comments
             const { data: comments } = await github.rest.issues.listComments({
