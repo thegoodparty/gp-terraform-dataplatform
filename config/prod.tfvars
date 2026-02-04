@@ -1,7 +1,6 @@
-# Production Astro configuration
+# Astro configuration
 # Applied via GitHub Actions on merge to main
 
-# Include both dev and prod deployments
 astro_environments = {
   dev = {
     name                    = "astro-dev"
@@ -35,13 +34,13 @@ astro_environments = {
     is_cicd_enforced        = false
     is_dag_deploy_enabled   = true
     is_development_mode     = false
-    is_high_availability    = false  # Disabled for cost savings
+    is_high_availability    = false
     default_task_pod_cpu    = "0.25"
     default_task_pod_memory = "0.5Gi"
     resource_quota_cpu      = "10"
     resource_quota_memory   = "20Gi"
-    scheduler_size          = "SMALL" # Minimal for cost savings
+    scheduler_size          = "SMALL"
     worker_queues           = []
-    hibernation_schedules   = []      # No hibernation for prod
+    hibernation_schedules   = []
   }
 }
