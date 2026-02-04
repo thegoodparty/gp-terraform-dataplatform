@@ -55,17 +55,6 @@ resource "astro_deployment" "environments" {
     }
   ]
 
-  worker_queues = [
-    for wq in each.value.worker_queues : {
-      name               = wq.name
-      is_default         = wq.is_default
-      astro_machine      = wq.astro_machine
-      max_worker_count   = wq.max_worker_count
-      min_worker_count   = wq.min_worker_count
-      worker_concurrency = wq.worker_concurrency
-    }
-  ]
-
   # Only set scaling_spec if there are hibernation schedules
   scaling_spec = length(each.value.hibernation_schedules) > 0 ? {
     hibernation_spec = {

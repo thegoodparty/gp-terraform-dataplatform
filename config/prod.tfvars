@@ -7,7 +7,7 @@ astro_environments = {
     name                    = "astro-dev"
     description             = "Development Airflow environment"
     type                    = "STANDARD"
-    executor                = "CELERY"
+    executor                = "KUBERNETES"
     is_cicd_enforced        = false
     is_dag_deploy_enabled   = true
     is_development_mode     = true
@@ -17,16 +17,7 @@ astro_environments = {
     resource_quota_cpu      = "10"
     resource_quota_memory   = "20Gi"
     scheduler_size          = "SMALL"
-    worker_queues = [
-      {
-        name               = "default"
-        is_default         = true
-        astro_machine      = "A5"
-        max_worker_count   = 10
-        min_worker_count   = 0
-        worker_concurrency = 5
-      }
-    ]
+    worker_queues           = []
     hibernation_schedules = [
       {
         hibernate_at_cron = "0 1 * * 2,3,4,5,6"
@@ -40,7 +31,7 @@ astro_environments = {
     name                    = "astro-prod"
     description             = "Production Airflow environment"
     type                    = "STANDARD"
-    executor                = "CELERY"
+    executor                = "KUBERNETES"
     is_cicd_enforced        = false
     is_dag_deploy_enabled   = true
     is_development_mode     = false
@@ -50,16 +41,7 @@ astro_environments = {
     resource_quota_cpu      = "10"
     resource_quota_memory   = "20Gi"
     scheduler_size          = "SMALL" # Minimal for cost savings
-    worker_queues = [
-      {
-        name               = "default"
-        is_default         = true
-        astro_machine      = "A5"  # Smallest worker type
-        max_worker_count   = 5
-        min_worker_count   = 0     # Scale to zero when idle
-        worker_concurrency = 8
-      }
-    ]
-    hibernation_schedules = []  # No hibernation for prod
+    worker_queues           = []
+    hibernation_schedules   = []      # No hibernation for prod
   }
 }
