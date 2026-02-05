@@ -15,8 +15,10 @@ crash.*.log
 # to change depending on the environment.
 *.tfvars
 *.tfvars.json
-# Exception: prod.tfvars contains deployment config (not secrets) and is needed by GitHub Actions
+# Exception: config/*.tfvars contain deployment config (not secrets) and are needed by GitHub Actions
+!config/dev.tfvars
 !config/prod.tfvars
+!config/all.tfvars
 
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
