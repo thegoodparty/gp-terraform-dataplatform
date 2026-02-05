@@ -24,9 +24,10 @@ on:
       environment:
         description: 'Environment to deploy'
         required: true
-        default: 'dev'
+        default: 'all'
         type: choice
         options:
+          - all
           - dev
           - prod
 
@@ -35,12 +36,22 @@ env:
 
 jobs:
   terraform:
-    name: Terraform
+    name: Terraform (${{ matrix.environment }})
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
-      pull-requests: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment != 'all' && fromJson(format('["{0}"]', github.event.inputs.environment)) || fromJson('["dev", "prod"]') }}
+
+    outputs:
+      dev_destroys: ${{ steps.analyze.outputs.destroys }}
+      dev_replaces: ${{ steps.analyze.outputs.replaces }}
+      prod_destroys: ${{ steps.analyze.outputs.destroys }}
+      prod_replaces: ${{ steps.analyze.outputs.replaces }}
 
     steps:
       - name: Checkout
@@ -81,27 +92,13 @@ jobs:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
         run: terraform init
 
-      - name: Set Environment
-        id: set-env
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            ENV="${{ github.event.inputs.environment }}"
-          elif [ "${{ github.event_name }}" == "pull_request" ]; then
-            ENV="dev"
-          else
-            # Push to main - plan prod since that's what you'd apply post-merge
-            ENV="prod"
-          fi
-          echo "environment=$ENV" >> $GITHUB_OUTPUT
-          echo "Planning environment: $ENV"
-
       - name: Terraform Plan
         id: plan
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
         run: |
           terraform plan \
-            -var-file=config/${{ steps.set-env.outputs.environment }}.tfvars \
+            -var-file=config/${{ matrix.environment }}.tfvars \
             -out=tfplan
 
       - name: Analyze Plan
@@ -122,111 +119,144 @@ jobs:
           DESTROY_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["delete"])) | select(.change.actions | contains(["create"]) | not) | .address] | join("\n")' tfplan.json)
           REPLACE_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"])) | .address] | join("\n")' tfplan.json)
 
-          echo "adds=$ADDS" >> $GITHUB_OUTPUT
-          echo "changes=$CHANGES" >> $GITHUB_OUTPUT
           echo "destroys=$DESTROYS" >> $GITHUB_OUTPUT
           echo "replaces=$REPLACES" >> $GITHUB_OUTPUT
 
-          # Store lists in files for the PR comment step
-          echo "$ADD_LIST" > /tmp/add_list.txt
-          echo "$CHANGE_LIST" > /tmp/change_list.txt
-          echo "$DESTROY_LIST" > /tmp/destroy_list.txt
-          echo "$REPLACE_LIST" > /tmp/replace_list.txt
-
-          # Build summary
-          echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Action | Count | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Create | $ADDS | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Update | $CHANGES | ⚠️ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Replace | $REPLACES | ❌ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Destroy | $DESTROYS | ❌ |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "$ADDS" -gt 0 ]; then
-            echo "### Resources to create:" >> $GITHUB_STEP_SUMMARY
-            echo "$ADD_LIST" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`" >> $GITHUB_STEP_SUMMARY; done
-            echo "" >> $GITHUB_STEP_SUMMARY
+          # Determine status
+          if [ "$DESTROYS" -gt 0 ] || [ "$REPLACES" -gt 0 ]; then
+            STATUS="❌ Requires manual review - resources will be destroyed"
+          elif [ "$CHANGES" -gt 0 ]; then
+            STATUS="⚠️ Review recommended - resources will be modified"
+          else
+            STATUS="✅ Safe to merge"
           fi
 
-          if [ "$CHANGES" -gt 0 ]; then
-            echo "### Resources to update:" >> $GITHUB_STEP_SUMMARY
-            echo "$CHANGE_LIST" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`" >> $GITHUB_STEP_SUMMARY; done
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
+          # Helper function to format resource list
+          format_list() {
+            echo "$1" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`"; done
+          }
 
-          if [ "$REPLACES" -gt 0 ]; then
-            echo "### ⚠️ Resources to replace (destroy + create):" >> $GITHUB_STEP_SUMMARY
-            echo "$REPLACE_LIST" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`" >> $GITHUB_STEP_SUMMARY; done
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
+          # Build markdown body
+          {
+            echo "## ${{ matrix.environment }}"
+            echo ""
+            echo "| Action | Count | Status |"
+            echo "|--------|-------|--------|"
+            echo "| Create | $ADDS | ✅ |"
+            echo "| Update | $CHANGES | ⚠️ |"
+            echo "| Replace | $REPLACES | ❌ |"
+            echo "| Destroy | $DESTROYS | ❌ |"
+            echo ""
+            echo "**${STATUS}**"
 
-          if [ "$DESTROYS" -gt 0 ]; then
-            echo "### ❌ Resources to destroy:" >> $GITHUB_STEP_SUMMARY
-            echo "$DESTROY_LIST" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`" >> $GITHUB_STEP_SUMMARY; done
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
+            if [ "$ADDS" -gt 0 ]; then
+              echo ""
+              echo "### Resources to create:"
+              format_list "$ADD_LIST"
+            fi
 
-          if [ "$ADDS" -eq 0 ] && [ "$CHANGES" -eq 0 ] && [ "$DESTROYS" -eq 0 ] && [ "$REPLACES" -eq 0 ]; then
-            echo "### ✅ No changes detected" >> $GITHUB_STEP_SUMMARY
-          fi
+            if [ "$CHANGES" -gt 0 ]; then
+              echo ""
+              echo "### Resources to update:"
+              format_list "$CHANGE_LIST"
+            fi
 
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
+            if [ "$REPLACES" -gt 0 ]; then
+              echo ""
+              echo "### ⚠️ Resources to replace:"
+              format_list "$REPLACE_LIST"
+            fi
+
+            if [ "$DESTROYS" -gt 0 ]; then
+              echo ""
+              echo "### ❌ Resources to destroy:"
+              format_list "$DESTROY_LIST"
+            fi
+
+            if [ "$ADDS" -eq 0 ] && [ "$CHANGES" -eq 0 ] && [ "$DESTROYS" -eq 0 ] && [ "$REPLACES" -eq 0 ]; then
+              echo ""
+              echo "### ✅ No changes detected"
+            fi
+          } > plan_summary_${{ matrix.environment }}.md
+
+          # Write to step summary
+          cat plan_summary_${{ matrix.environment }}.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Plan Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: plan-summary-${{ matrix.environment }}
+          path: plan_summary_${{ matrix.environment }}.md
+          retention-days: 1
+
+      - name: Apply Instructions
+        if: github.event_name == 'push'
+        run: |
+          ENV="${{ matrix.environment }}"
+          echo "::notice::Plan complete for $ENV. Apply manually when ready."
+          echo ""
+          echo "To apply $ENV changes:"
+          echo "  terraform apply -var-file=config/$ENV.tfvars"
+
+  comment:
+    name: PR Comment
+    runs-on: ubuntu-latest
+    needs: terraform
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Download Plan Summaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: plan-summary-*
+          merge-multiple: true
+
+      - name: Create Combined Comment
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const adds = ${{ steps.analyze.outputs.adds }};
-            const changes = ${{ steps.analyze.outputs.changes }};
-            const destroys = ${{ steps.analyze.outputs.destroys }};
-            const replaces = ${{ steps.analyze.outputs.replaces }};
+            const marker = '<!-- terraform-plan-comment -->';
 
-            const addList = fs.readFileSync('/tmp/add_list.txt', 'utf8').trim();
-            const changeList = fs.readFileSync('/tmp/change_list.txt', 'utf8').trim();
-            const destroyList = fs.readFileSync('/tmp/destroy_list.txt', 'utf8').trim();
-            const replaceList = fs.readFileSync('/tmp/replace_list.txt', 'utf8').trim();
+            // Read available summaries
+            let body = marker + '\n# Terraform Plan Results\n\n';
 
-            let status = '✅ Safe to merge';
-            if (destroys > 0 || replaces > 0) {
-              status = '❌ Requires manual review - resources will be destroyed';
-            } else if (changes > 0) {
-              status = '⚠️ Review recommended - resources will be modified';
+            const envs = ['dev', 'prod'];
+            for (const env of envs) {
+              const file = `plan_summary_${env}.md`;
+              if (fs.existsSync(file)) {
+                body += fs.readFileSync(file, 'utf8') + '\n\n';
+              }
             }
 
-            const formatList = (list) => list ? list.split('\n').filter(x => x).map(x => `- \`${x}\``).join('\n') : '';
+            // Add legend and apply instructions
+            body += `---
 
-            let details = '';
-            if (adds > 0) details += `\n### Resources to create:\n${formatList(addList)}\n`;
-            if (changes > 0) details += `\n### Resources to update:\n${formatList(changeList)}\n`;
-            if (replaces > 0) details += `\n### ⚠️ Resources to replace:\n${formatList(replaceList)}\n`;
-            if (destroys > 0) details += `\n### ❌ Resources to destroy:\n${formatList(destroyList)}\n`;
+<details>
+<summary>What do these mean?</summary>
 
-            const marker = '<!-- terraform-plan-comment -->';
-            const body = [
-              marker,
-              '## Terraform Plan Results',
-              '',
-              '| Action | Count | Status |',
-              '|--------|-------|--------|',
-              `| Create | ${adds} | ✅ |`,
-              `| Update | ${changes} | ⚠️ |`,
-              `| Replace | ${replaces} | ❌ |`,
-              `| Destroy | ${destroys} | ❌ |`,
-              '',
-              `**${status}**`,
-              details,
-              '<details>',
-              '<summary>What do these mean?</summary>',
-              '',
-              '- **Create**: New resources will be added',
-              '- **Update**: Existing resources will be modified in-place',
-              '- **Replace**: Resources will be destroyed and recreated (data loss possible)',
-              '- **Destroy**: Resources will be permanently deleted',
-              '',
-              '</details>'
-            ].join('\n');
+- **Create**: New resources will be added
+- **Update**: Existing resources will be modified in-place
+- **Replace**: Resources will be destroyed and recreated (data loss possible)
+- **Destroy**: Resources will be permanently deleted
+
+</details>
+
+---
+
+**To apply these changes after merging:**
+\`\`\`bash
+source .env
+# For dev
+terraform plan -var-file=config/dev.tfvars
+terraform apply -var-file=config/dev.tfvars
+
+# For prod
+terraform plan -var-file=config/prod.tfvars
+terraform apply -var-file=config/prod.tfvars
+\`\`\``;
 
             // Find and delete previous terraform plan comments
             const { data: comments } = await github.rest.issues.listComments({
@@ -254,17 +284,31 @@ jobs:
               body: body
             });
 
-      - name: Fail on Destroy (PR only)
-        if: github.event_name == 'pull_request' && (steps.analyze.outputs.destroys != '0' || steps.analyze.outputs.replaces != '0')
-        run: |
-          echo "::error::Plan contains ${{ steps.analyze.outputs.destroys }} destroy(s) and ${{ steps.analyze.outputs.replaces }} replace(s). Manual review required."
-          exit 1
+  check-destroys:
+    name: Check for Destroys
+    runs-on: ubuntu-latest
+    needs: terraform
+    if: github.event_name == 'pull_request'
 
-      - name: Apply Instructions
-        if: github.event_name == 'push'
+    steps:
+      - name: Download Plan Summaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: plan-summary-*
+          merge-multiple: true
+
+      - name: Check for Destructive Changes
         run: |
-          ENV="${{ steps.set-env.outputs.environment }}"
-          echo "::notice::Plan complete for $ENV. Apply manually when ready."
-          echo ""
-          echo "To apply $ENV changes:"
-          echo "  terraform apply -var-file=config/$ENV.tfvars"
+          FAILED=false
+          for file in plan_summary_*.md; do
+            if [ -f "$file" ]; then
+              ENV=$(echo "$file" | sed 's/plan_summary_\(.*\)\.md/\1/')
+              if grep -q "❌ Requires manual review" "$file"; then
+                echo "::error::$ENV plan contains destructive changes. Manual review required."
+                FAILED=true
+              fi
+            fi
+          done
+          if [ "$FAILED" = true ]; then
+            exit 1
+          fi

@@ -48,10 +48,10 @@ output "astro_deployments" {
   value = {
     for name, deployment in astro_deployment.environments :
     name => {
-      id           = deployment.id
-      name         = deployment.name
-      airflow_url  = "https://${deployment.id}.astronomer.run"
-      workspace_id = deployment.workspace_id
+      id             = deployment.id
+      name           = deployment.name
+      webserver_url  = deployment.webserver_url
+      workspace_id   = deployment.workspace_id
     }
   }
 }
