@@ -20,38 +20,18 @@ on:
       - '.github/workflows/terraform-cicd.yaml'
 
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy'
-        required: true
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - dev
-          - prod
 
 env:
   TF_VERSION: '1.14.4'
 
 jobs:
   terraform:
-    name: Terraform (${{ matrix.environment }})
+    name: Terraform Plan
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
-
-    strategy:
-      fail-fast: false
-      matrix:
-        environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment != 'all' && fromJson(format('["{0}"]', github.event.inputs.environment)) || fromJson('["dev", "prod"]') }}
-
-    outputs:
-      dev_destroys: ${{ steps.analyze.outputs.destroys }}
-      dev_replaces: ${{ steps.analyze.outputs.replaces }}
-      prod_destroys: ${{ steps.analyze.outputs.destroys }}
-      prod_replaces: ${{ steps.analyze.outputs.replaces }}
+      pull-requests: write
 
     steps:
       - name: Checkout
@@ -77,6 +57,11 @@ jobs:
             echo "::error::ASTRO_CONTACT_EMAILS is empty or not configured"
             exit 1
           fi
+
+          # Merge dev and prod environment configs
+          DEV_ENVS=$(grep -A 100 'astro_environments' config/dev.tfvars | sed '1d' | sed '/^$/,$d' || echo "")
+          PROD_ENVS=$(grep -A 100 'astro_environments' config/prod.tfvars | sed '1d' | sed '/^$/,$d' || echo "")
+
           cat > terraform.tfvars << EOF
           databricks_account_id     = "${{ vars.DATABRICKS_ACCOUNT_ID }}"
           databricks_workspace_host = "${{ vars.DATABRICKS_WORKSPACE_HOST }}"
@@ -85,7 +70,15 @@ jobs:
           workspace_id              = "${{ vars.DATABRICKS_WORKSPACE_ID }}"
           astro_organization_id     = "${{ vars.ASTRO_ORGANIZATION_ID }}"
           astro_contact_emails      = [${EMAILS_LIST}]
+
+          astro_environments = {
+          $DEV_ENVS
+          $PROD_ENVS
+          }
           EOF
+
+          echo "Generated terraform.tfvars:"
+          cat terraform.tfvars
 
       - name: Terraform Init
         env:
@@ -96,10 +89,7 @@ jobs:
         id: plan
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
-        run: |
-          terraform plan \
-            -var-file=config/${{ matrix.environment }}.tfvars \
-            -out=tfplan
+        run: terraform plan -out=tfplan
 
       - name: Analyze Plan
         id: analyze
@@ -138,7 +128,7 @@ jobs:
 
           # Build markdown body
           {
-            echo "## ${{ matrix.environment }}"
+            echo "# Terraform Plan Results"
             echo ""
             echo "| Action | Count | Status |"
             echo "|--------|-------|--------|"
@@ -151,112 +141,73 @@ jobs:
 
             if [ "$ADDS" -gt 0 ]; then
               echo ""
-              echo "### Resources to create:"
+              echo "## Resources to create:"
               format_list "$ADD_LIST"
             fi
 
             if [ "$CHANGES" -gt 0 ]; then
               echo ""
-              echo "### Resources to update:"
+              echo "## Resources to update:"
               format_list "$CHANGE_LIST"
             fi
 
             if [ "$REPLACES" -gt 0 ]; then
               echo ""
-              echo "### ⚠️ Resources to replace:"
+              echo "## ⚠️ Resources to replace:"
               format_list "$REPLACE_LIST"
             fi
 
             if [ "$DESTROYS" -gt 0 ]; then
               echo ""
-              echo "### ❌ Resources to destroy:"
+              echo "## ❌ Resources to destroy:"
               format_list "$DESTROY_LIST"
             fi
 
             if [ "$ADDS" -eq 0 ] && [ "$CHANGES" -eq 0 ] && [ "$DESTROYS" -eq 0 ] && [ "$REPLACES" -eq 0 ]; then
               echo ""
-              echo "### ✅ No changes detected"
+              echo "## ✅ No changes detected"
             fi
-          } > plan_summary_${{ matrix.environment }}.md
+
+            echo ""
+            echo "---"
+            echo ""
+            echo "<details>"
+            echo "<summary>What do these mean?</summary>"
+            echo ""
+            echo "- **Create**: New resources will be added"
+            echo "- **Update**: Existing resources will be modified in-place"
+            echo "- **Replace**: Resources will be destroyed and recreated (data loss possible)"
+            echo "- **Destroy**: Resources will be permanently deleted"
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "---"
+            echo ""
+            echo "**To apply these changes after merging:**"
+            echo "\`\`\`bash"
+            echo "source .env"
+            echo "# For dev only"
+            echo "terraform plan -var-file=config/dev.tfvars"
+            echo "terraform apply -var-file=config/dev.tfvars"
+            echo ""
+            echo "# For prod only"
+            echo "terraform plan -var-file=config/prod.tfvars"
+            echo "terraform apply -var-file=config/prod.tfvars"
+            echo "\`\`\`"
+          } > plan_summary.md
 
           # Write to step summary
-          cat plan_summary_${{ matrix.environment }}.md >> $GITHUB_STEP_SUMMARY
+          cat plan_summary.md >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload Plan Summary
-        uses: actions/upload-artifact@v4
-        with:
-          name: plan-summary-${{ matrix.environment }}
-          path: plan_summary_${{ matrix.environment }}.md
-          retention-days: 1
-
-      - name: Apply Instructions
-        if: github.event_name == 'push'
-        run: |
-          ENV="${{ matrix.environment }}"
-          echo "::notice::Plan complete for $ENV. Apply manually when ready."
-          echo ""
-          echo "To apply $ENV changes:"
-          echo "  terraform apply -var-file=config/$ENV.tfvars"
-
-  comment:
-    name: PR Comment
-    runs-on: ubuntu-latest
-    needs: terraform
-    if: github.event_name == 'pull_request'
-    permissions:
-      pull-requests: write
-
-    steps:
-      - name: Download Plan Summaries
-        uses: actions/download-artifact@v4
-        with:
-          pattern: plan-summary-*
-          merge-multiple: true
-
-      - name: Create Combined Comment
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const marker = '<!-- terraform-plan-comment -->';
-
-            // Read available summaries
-            let body = marker + '\n# Terraform Plan Results\n\n';
-
-            const envs = ['dev', 'prod'];
-            for (const env of envs) {
-              const file = `plan_summary_${env}.md`;
-              if (fs.existsSync(file)) {
-                body += fs.readFileSync(file, 'utf8') + '\n\n';
-              }
-            }
-
-            // Add legend and apply instructions
-            body += `---
-
-<details>
-<summary>What do these mean?</summary>
-
-- **Create**: New resources will be added
-- **Update**: Existing resources will be modified in-place
-- **Replace**: Resources will be destroyed and recreated (data loss possible)
-- **Destroy**: Resources will be permanently deleted
-
-</details>
-
----
-
-**To apply these changes after merging:**
-\`\`\`bash
-source .env
-# For dev
-terraform plan -var-file=config/dev.tfvars
-terraform apply -var-file=config/dev.tfvars
-
-# For prod
-terraform plan -var-file=config/prod.tfvars
-terraform apply -var-file=config/prod.tfvars
-\`\`\``;
+            const summary = fs.readFileSync('plan_summary.md', 'utf8');
+            const body = marker + '\n' + summary;
 
             // Find and delete previous terraform plan comments
             const { data: comments } = await github.rest.issues.listComments({
@@ -284,31 +235,20 @@ terraform apply -var-file=config/prod.tfvars
               body: body
             });
 
-  check-destroys:
-    name: Check for Destroys
-    runs-on: ubuntu-latest
-    needs: terraform
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - name: Download Plan Summaries
-        uses: actions/download-artifact@v4
-        with:
-          pattern: plan-summary-*
-          merge-multiple: true
-
-      - name: Check for Destructive Changes
+      - name: Fail on Destroy (PR only)
+        if: github.event_name == 'pull_request' && (steps.analyze.outputs.destroys != '0' || steps.analyze.outputs.replaces != '0')
         run: |
-          FAILED=false
-          for file in plan_summary_*.md; do
-            if [ -f "$file" ]; then
-              ENV=$(echo "$file" | sed 's/plan_summary_\(.*\)\.md/\1/')
-              if grep -q "❌ Requires manual review" "$file"; then
-                echo "::error::$ENV plan contains destructive changes. Manual review required."
-                FAILED=true
-              fi
-            fi
-          done
-          if [ "$FAILED" = true ]; then
-            exit 1
-          fi
+          echo "::error::Plan contains ${{ steps.analyze.outputs.destroys }} destroy(s) and ${{ steps.analyze.outputs.replaces }} replace(s). Manual review required."
+          exit 1
+
+      - name: Apply Instructions
+        if: github.event_name == 'push'
+        run: |
+          echo "::notice::Plan complete. Apply manually when ready."
+          echo ""
+          echo "To apply changes:"
+          echo "  # For dev"
+          echo "  terraform apply -var-file=config/dev.tfvars"
+          echo ""
+          echo "  # For prod"
+          echo "  terraform apply -var-file=config/prod.tfvars"
