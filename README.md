@@ -83,30 +83,62 @@ This creates:
 
 ### Deployment Strategy
 
-| Environment | Management | Trigger |
-|-------------|------------|---------|
-| **dev** | Local Terraform | Manual `terraform apply` |
-| **prod** | GitHub Actions | Merge to `main` branch |
+CI runs `terraform plan` on every push/PR to `main`. Apply is always manual to avoid accidental infrastructure changes.
 
-### Dev Deployment
+| Environment | Config File | Description |
+|-------------|-------------|-------------|
+| **dev** | `config/dev.tfvars` | Development only |
+| **prod** | `config/prod.tfvars` | Production only |
+| **all** | `config/all.tfvars` | Both environments |
 
-The dev deployment is managed locally and includes:
-- Development mode enabled
-- Hibernation schedule (overnight)
-- A5 workers (0-10, scale to zero)
+### Environment Configuration
+
+**Dev** (`config/dev.tfvars`):
+- Development mode enabled (reduced costs)
+- Hibernation schedule (sleeps overnight on weekdays)
+- Kubernetes executor
 - SMALL scheduler
 
-### Prod Deployment
-
-The prod deployment is created automatically via GitHub Actions when merging to `main`.
-
-**Configuration:** See `config/prod.tfvars`
-
-**Cost optimization:**
+**Prod** (`config/prod.tfvars`):
+- Production mode (always on)
+- No hibernation
+- Kubernetes executor
 - SMALL scheduler
-- A5 workers (smallest type)
-- Scale to zero when idle
-- No high availability (can enable later)
+
+**All** (`config/all.tfvars`):
+- Both dev and prod environments (for manual deployment)
+
+### Applying Changes
+
+After reviewing the plan in CI, apply changes manually:
+
+**For dev:**
+```bash
+source .env
+terraform apply -var-file=config/dev.tfvars
+```
+
+**For prod:**
+```bash
+source .env
+terraform apply -var-file=config/prod.tfvars
+```
+
+**For both:**
+```bash
+source .env
+terraform apply -var-file=config/all.tfvars
+```
+
+### Manual Dispatch
+
+To run a plan via GitHub Actions:
+
+1. Go to **Actions** tab in GitHub
+2. Select **Terraform CI/CD** workflow
+3. Click **Run workflow**
+4. Choose environment: `dev`, `prod`, or `all`
+5. Review the plan output
 
 ### GitHub Actions Setup
 
@@ -132,8 +164,8 @@ Add these **variables** to your GitHub repository:
 
 The workflow triggers on:
 - Pull request to `main` (plan only)
-- Push to `main` (plan + apply)
-- Manual dispatch
+- Push to `main` (plan only)
+- Manual dispatch (plan only, choose environment)
 
 ---
 
@@ -143,8 +175,11 @@ The workflow triggers on:
 .
 ├── .github/
 │   └── workflows/
-│       └── terraform-cicd.yaml    # GitHub Actions for prod deployment
+│       └── terraform-cicd.yaml    # GitHub Actions CI/CD workflow
 ├── config/
+│   ├── dev.tfvars             # Dev environment config
+│   ├── prod.tfvars            # Prod environment config
+│   ├── all.tfvars             # All environments config
 │   ├── marts.yaml             # Mart definitions
 │   └── prod.tfvars            # Production Astro configuration
 ├── astro.tf                   # Astro workspace and deployments

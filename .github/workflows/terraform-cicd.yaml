@@ -20,6 +20,16 @@ on:
       - '.github/workflows/terraform-cicd.yaml'
 
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - dev
+          - prod
+          - all
 
 env:
   TF_VERSION: '1.14.4'
@@ -68,13 +78,25 @@ jobs:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
         run: terraform init
 
+      - name: Set Environment
+        id: set-env
+        run: |
+          # Use manual input if provided, otherwise default to 'all'
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          else
+            ENV="all"
+          fi
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          echo "Planning environment: $ENV"
+
       - name: Terraform Plan
         id: plan
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
         run: |
           terraform plan \
-            -var-file=config/prod.tfvars \
+            -var-file=config/${{ steps.set-env.outputs.environment }}.tfvars \
             -out=tfplan
 
       - name: Analyze Plan
@@ -233,8 +255,11 @@ jobs:
           echo "::error::Plan contains ${{ steps.analyze.outputs.destroys }} destroy(s) and ${{ steps.analyze.outputs.replaces }} replace(s). Manual review required."
           exit 1
 
-      - name: Terraform Apply
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
-        run: terraform apply -auto-approve tfplan
+      - name: Apply Instructions
+        if: github.event_name == 'push'
+        run: |
+          ENV="${{ steps.set-env.outputs.environment }}"
+          echo "::notice::Plan complete for $ENV. Apply manually when ready."
+          echo ""
+          echo "To apply $ENV changes:"
+          echo "  terraform apply -var-file=config/$ENV.tfvars"
