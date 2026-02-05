@@ -22,6 +22,11 @@ data "databricks_service_principal" "zapier" {
   display_name = "zapier"
 }
 
+data "databricks_service_principal" "github_action" {
+  provider     = databricks.account
+  display_name = "github-action"
+}
+
 # Data sources for existing groups (managed outside Terraform)
 data "databricks_group" "account_users" {
   provider     = databricks.account

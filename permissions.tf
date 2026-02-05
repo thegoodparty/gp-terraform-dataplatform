@@ -75,6 +75,12 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
   }
 
+  # github-action service principal for CI/CD (read-only for terraform plan)
+  grant {
+    principal  = data.databricks_service_principal.github_action.application_id
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+  }
+
   depends_on = [
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
@@ -112,6 +118,15 @@ resource "databricks_grants" "mart_schemas" {
       "USE_SCHEMA",
       "CREATE_TABLE",
       "MODIFY"
+    ]
+  }
+
+  # github-action service principal for CI/CD (read-only for terraform plan)
+  grant {
+    principal = data.databricks_service_principal.github_action.application_id
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT"
     ]
   }
 
