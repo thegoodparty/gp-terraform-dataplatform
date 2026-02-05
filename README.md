@@ -143,7 +143,7 @@ The workflow triggers on:
 .
 ├── .github/
 │   └── workflows/
-│       └── deploy-prod.yml    # GitHub Actions for prod deployment
+│       └── terraform-cicd.yaml    # GitHub Actions for prod deployment
 ├── config/
 │   ├── marts.yaml             # Mart definitions
 │   └── prod.tfvars            # Production Astro configuration

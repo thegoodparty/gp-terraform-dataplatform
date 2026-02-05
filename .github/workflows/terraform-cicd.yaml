@@ -8,7 +8,7 @@ on:
       - '*.tf'
       - 'config/*.tfvars'
       - 'config/*.yaml'
-      - '.github/workflows/deploy-prod.yml'
+      - '.github/workflows/terraform-cicd.yaml'
 
   push:
     branches:
@@ -17,7 +17,7 @@ on:
       - '*.tf'
       - 'config/*.tfvars'
       - 'config/*.yaml'
-      - '.github/workflows/deploy-prod.yml'
+      - '.github/workflows/terraform-cicd.yaml'
 
   workflow_dispatch:
 
@@ -205,7 +205,8 @@ jobs:
             const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
-              repo: context.repo.repo
+              repo: context.repo.repo,
+              per_page: 100
             });
 
             for (const comment of comments) {
