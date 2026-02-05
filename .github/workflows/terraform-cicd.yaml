@@ -58,15 +58,17 @@ jobs:
             exit 1
           fi
 
-          cat > terraform.tfvars << EOF
+          # Use quoted heredoc to prevent bash from interpreting special chars in secrets
+          cat > terraform.tfvars << 'EOF'
           databricks_account_id     = "${{ vars.DATABRICKS_ACCOUNT_ID }}"
           databricks_workspace_host = "${{ vars.DATABRICKS_WORKSPACE_HOST }}"
           databricks_client_id      = "${{ secrets.DATABRICKS_CLIENT_ID }}"
           databricks_client_secret  = "${{ secrets.DATABRICKS_CLIENT_SECRET }}"
           workspace_id              = "${{ vars.DATABRICKS_WORKSPACE_ID }}"
           astro_organization_id     = "${{ vars.ASTRO_ORGANIZATION_ID }}"
-          astro_contact_emails      = [${EMAILS_LIST}]
           EOF
+          # Append emails separately since it needs bash variable expansion
+          echo "          astro_contact_emails      = [${EMAILS_LIST}]" >> terraform.tfvars
 
       - name: Terraform Init
         env:
