@@ -32,6 +32,20 @@ variable "databricks_account_profile" {
   default     = null
 }
 
+# Databricks service principal credentials (for CI)
+variable "databricks_client_id" {
+  description = "Databricks service principal client ID (for CI, leave null for local dev)"
+  type        = string
+  default     = null
+}
+
+variable "databricks_client_secret" {
+  description = "Databricks service principal client secret (for CI, leave null for local dev)"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 # =============================================================================
 # Astronomer (Astro) Variables
 # =============================================================================

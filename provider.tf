@@ -1,17 +1,21 @@
 # Databricks workspace-level provider (for catalogs, schemas, workspace resources)
-# Uses CLI profile locally, or DATABRICKS_HOST + DATABRICKS_CLIENT_ID/SECRET in CI
+# Uses CLI profile locally, or service principal OAuth in CI
 provider "databricks" {
-  profile = var.databricks_workspace_profile
-  host    = var.databricks_workspace_host
+  profile       = var.databricks_workspace_profile
+  host          = var.databricks_workspace_host
+  client_id     = var.databricks_client_id
+  client_secret = var.databricks_client_secret
 }
 
 # Databricks account-level provider (for account groups, service principals)
-# Uses CLI profile locally, or DATABRICKS_CLIENT_ID/SECRET in CI
+# Uses CLI profile locally, or service principal OAuth in CI
 provider "databricks" {
-  alias      = "account"
-  host       = "https://accounts.cloud.databricks.com"
-  account_id = var.databricks_account_id
-  profile    = var.databricks_account_profile
+  alias         = "account"
+  host          = "https://accounts.cloud.databricks.com"
+  account_id    = var.databricks_account_id
+  profile       = var.databricks_account_profile
+  client_id     = var.databricks_client_id
+  client_secret = var.databricks_client_secret
 }
 
 # Astronomer provider for Astro Airflow deployments

@@ -56,6 +56,8 @@ jobs:
           cat > terraform.tfvars << EOF
           databricks_account_id     = "${{ vars.DATABRICKS_ACCOUNT_ID }}"
           databricks_workspace_host = "${{ vars.DATABRICKS_WORKSPACE_HOST }}"
+          databricks_client_id      = "${{ secrets.DATABRICKS_CLIENT_ID }}"
+          databricks_client_secret  = "${{ secrets.DATABRICKS_CLIENT_SECRET }}"
           workspace_id              = "${{ vars.DATABRICKS_WORKSPACE_ID }}"
           astro_organization_id     = "${{ vars.ASTRO_ORGANIZATION_ID }}"
           astro_contact_emails      = [${EMAILS_LIST}]
@@ -64,16 +66,12 @@ jobs:
       - name: Terraform Init
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
-          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: terraform init
 
       - name: Terraform Plan
         id: plan
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
-          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: |
           terraform plan \
             -var-file=config/prod.tfvars \
@@ -238,6 +236,4 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
-          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: terraform apply -auto-approve tfplan
