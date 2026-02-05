@@ -72,9 +72,10 @@ variable "astro_contact_emails" {
   type        = list(string)
 }
 
-variable "astro_environments" {
-  description = "Map of Astro deployment environments to create"
-  type = map(object({
+# Astro environment configuration type
+variable "astro_env_dev" {
+  description = "Dev Astro deployment configuration (optional)"
+  type = object({
     name                    = string
     description             = string
     type                    = string # STANDARD, DEDICATED
@@ -94,6 +95,32 @@ variable "astro_environments" {
       description       = string
       is_enabled        = bool
     })), [])
-  }))
-  # No default - use config/prod.tfvars for all environments
+  })
+  default = null
+}
+
+variable "astro_env_prod" {
+  description = "Prod Astro deployment configuration (optional)"
+  type = object({
+    name                    = string
+    description             = string
+    type                    = string # STANDARD, DEDICATED
+    executor                = string # CELERY, KUBERNETES
+    is_cicd_enforced        = bool
+    is_dag_deploy_enabled   = bool
+    is_development_mode     = bool
+    is_high_availability    = bool
+    default_task_pod_cpu    = string
+    default_task_pod_memory = string
+    resource_quota_cpu      = string
+    resource_quota_memory   = string
+    scheduler_size          = string # SMALL, MEDIUM, LARGE
+    hibernation_schedules = optional(list(object({
+      hibernate_at_cron = string
+      wake_at_cron      = string
+      description       = string
+      is_enabled        = bool
+    })), [])
+  })
+  default = null
 }

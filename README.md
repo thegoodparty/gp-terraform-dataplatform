@@ -8,7 +8,7 @@ Terraform configuration for managing the Good Party data infrastructure:
 
 ### Prerequisites
 
-- Terraform ~> 1.14.3 (`brew install hashicorp/tap/terraform`)
+- Terraform ~> 1.14.4 (`brew install hashicorp/tap/terraform`)
 - Astro CLI (`brew install astronomer/tap/astro`)
 - Databricks CLI with `DEFAULT` and `ACCOUNT` profiles configured
 
@@ -108,13 +108,19 @@ CI runs `terraform plan` on every push/PR to `main`. Apply is always manual to a
 
 After reviewing the plan in CI, apply changes manually:
 
-**For dev:**
+**For both environments (recommended):**
+```bash
+source .env
+terraform apply -var-file=config/dev.tfvars -var-file=config/prod.tfvars
+```
+
+**For dev only:**
 ```bash
 source .env
 terraform apply -var-file=config/dev.tfvars
 ```
 
-**For prod:**
+**For prod only:**
 ```bash
 source .env
 terraform apply -var-file=config/prod.tfvars
@@ -127,8 +133,7 @@ To run a plan via GitHub Actions:
 1. Go to **Actions** tab in GitHub
 2. Select **Terraform CI/CD** workflow
 3. Click **Run workflow**
-4. Choose environment: `dev` or `prod`
-5. Review the plan output
+4. Review the plan output (includes both dev and prod)
 
 ### GitHub Actions Setup
 
@@ -155,7 +160,7 @@ Add these **variables** to your GitHub repository:
 The workflow triggers on:
 - Pull request to `main` (plan only)
 - Push to `main` (plan only)
-- Manual dispatch (plan only, choose environment)
+- Manual dispatch (plan only)
 
 ---
 
@@ -188,6 +193,6 @@ The workflow triggers on:
 
 | Provider | Version |
 |----------|---------|
-| Terraform | ~> 1.14.3 |
+| Terraform | ~> 1.14.4 |
 | databricks/databricks | ~> 1.50 |
 | astronomer/astro | ~> 1.0 |

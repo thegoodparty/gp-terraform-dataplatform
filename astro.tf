@@ -22,7 +22,7 @@ resource "astro_workspace" "data_engineering" {
 # -----------------------------------------------------------------------------
 
 resource "astro_deployment" "environments" {
-  for_each = var.astro_environments
+  for_each = local.astro_environments
 
   name                    = each.value.name
   description             = each.value.description

@@ -77,7 +77,7 @@ jobs:
         id: plan
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
-        run: terraform plan -var-file=config/ci.tfvars -out=tfplan
+        run: terraform plan -var-file=config/dev.tfvars -var-file=config/prod.tfvars -out=tfplan
 
       - name: Analyze Plan
         id: analyze
@@ -174,13 +174,12 @@ jobs:
             echo "**To apply these changes after merging:**"
             echo "\`\`\`bash"
             echo "source .env"
-            echo "# For dev only"
-            echo "terraform plan -var-file=config/dev.tfvars"
-            echo "terraform apply -var-file=config/dev.tfvars"
+            echo "# Both environments (recommended)"
+            echo "terraform apply -var-file=config/dev.tfvars -var-file=config/prod.tfvars"
             echo ""
-            echo "# For prod only"
-            echo "terraform plan -var-file=config/prod.tfvars"
-            echo "terraform apply -var-file=config/prod.tfvars"
+            echo "# Or individually:"
+            echo "terraform apply -var-file=config/dev.tfvars   # dev only"
+            echo "terraform apply -var-file=config/prod.tfvars  # prod only"
             echo "\`\`\`"
           } > plan_summary.md
 
@@ -235,8 +234,9 @@ jobs:
           echo "::notice::Plan complete. Apply manually when ready."
           echo ""
           echo "To apply changes:"
-          echo "  # For dev"
-          echo "  terraform apply -var-file=config/dev.tfvars"
+          echo "  # Both environments (recommended)"
+          echo "  terraform apply -var-file=config/dev.tfvars -var-file=config/prod.tfvars"
           echo ""
-          echo "  # For prod"
-          echo "  terraform apply -var-file=config/prod.tfvars"
+          echo "  # Or individually:"
+          echo "  terraform apply -var-file=config/dev.tfvars   # dev only"
+          echo "  terraform apply -var-file=config/prod.tfvars  # prod only"

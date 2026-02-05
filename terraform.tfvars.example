@@ -35,23 +35,10 @@ astro_region         = "us-west-2"
 # Contact emails for deployment alerts
 astro_contact_emails = ["your-email@example.com"]
 
-# Astro deployment environments (required)
-# Copy from config/prod.tfvars and modify as needed
-astro_environments = {
-  dev = {
-    name                    = "astro-dev"
-    description             = "Development Airflow environment"
-    type                    = "STANDARD"
-    executor                = "KUBERNETES"
-    is_cicd_enforced        = false
-    is_dag_deploy_enabled   = true
-    is_development_mode     = true
-    is_high_availability    = false
-    default_task_pod_cpu    = "0.25"
-    default_task_pod_memory = "0.5Gi"
-    resource_quota_cpu      = "10"
-    resource_quota_memory   = "20Gi"
-    scheduler_size          = "SMALL"
-    hibernation_schedules   = []
-  }
-}
+# Astro deployment environments
+# For local dev, include the environments you want to deploy
+# See config/dev.tfvars and config/prod.tfvars for full examples
+# Or use: terraform plan -var-file=config/dev.tfvars -var-file=config/prod.tfvars
+
+# astro_env_dev = { ... }   # Uncomment and configure, or use -var-file
+# astro_env_prod = { ... }  # Uncomment and configure, or use -var-file
