@@ -11,18 +11,25 @@ variable "workspace_id" {
   type        = string
 }
 
-# Databricks CLI profile for workspace-level operations
+# Databricks CLI profile for workspace-level operations (local dev)
 variable "databricks_workspace_profile" {
-  description = "Databricks CLI profile name for workspace authentication"
+  description = "Databricks CLI profile name for workspace authentication (leave null for CI)"
   type        = string
-  default     = "DEFAULT"
+  default     = null
 }
 
-# Databricks CLI profile for account-level operations
-variable "databricks_account_profile" {
-  description = "Databricks CLI profile name for account-level authentication"
+# Databricks workspace host URL (for CI, or leave null to use profile)
+variable "databricks_workspace_host" {
+  description = "Databricks workspace URL (e.g., https://xxx.cloud.databricks.com)"
   type        = string
-  default     = "ACCOUNT"
+  default     = null
+}
+
+# Databricks CLI profile for account-level operations (local dev)
+variable "databricks_account_profile" {
+  description = "Databricks CLI profile name for account-level authentication (leave null for CI)"
+  type        = string
+  default     = null
 }
 
 # =============================================================================
@@ -49,7 +56,6 @@ variable "astro_region" {
 variable "astro_contact_emails" {
   description = "Contact emails for Astro deployment alerts"
   type        = list(string)
-  default     = ["hugh@goodparty.org"]
 }
 
 variable "astro_environments" {

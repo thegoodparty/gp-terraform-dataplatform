@@ -110,18 +110,30 @@ The prod deployment is created automatically via GitHub Actions when merging to 
 
 ### GitHub Actions Setup
 
-Add these secrets to your GitHub repository:
+Add these **secrets** to your GitHub repository:
 
 | Secret | Description |
 |--------|-------------|
 | `ASTRO_API_TOKEN` | Astronomer API token |
-| `ASTRO_ORGANIZATION_ID` | Astronomer org ID |
+| `DATABRICKS_CLIENT_ID` | Databricks service principal client ID |
+| `DATABRICKS_CLIENT_SECRET` | Databricks service principal secret |
+
+Add these **variables** to your GitHub repository:
+
+| Variable | Description |
+|----------|-------------|
+| `AWS_ROLE_ARN` | IAM role ARN for OIDC authentication |
+| `AWS_REGION` | AWS region (e.g., `us-west-2`) |
+| `ASTRO_ORGANIZATION_ID` | Astronomer organization ID |
+| `ASTRO_CONTACT_EMAILS` | Comma-separated alert emails |
 | `DATABRICKS_ACCOUNT_ID` | Databricks account ID |
 | `DATABRICKS_WORKSPACE_ID` | Databricks workspace ID |
+| `DATABRICKS_WORKSPACE_HOST` | Databricks workspace URL |
 
 The workflow triggers on:
-- Push to `main` (auto-apply)
-- Manual dispatch (plan or apply)
+- Pull request to `main` (plan only)
+- Push to `main` (plan + apply)
+- Manual dispatch
 
 ---
 

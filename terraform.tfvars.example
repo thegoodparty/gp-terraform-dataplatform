@@ -12,9 +12,11 @@ databricks_account_id = "00000000-0000-0000-0000-000000000000"
 # Databricks workspace ID for account-level operations
 workspace_id = "0000000000000000"
 
-# Databricks CLI profiles (optional - defaults shown)
+# Databricks CLI profiles (for local development)
+# Leave these set for local dev; CI uses service principal auth instead
 databricks_workspace_profile = "DEFAULT"
 databricks_account_profile   = "ACCOUNT"
+# databricks_workspace_host  = "https://xxx.cloud.databricks.com"  # Only needed for CI
 
 # =============================================================================
 # Astronomer (Astro) Configuration
@@ -29,6 +31,9 @@ astro_organization_id = "your-astro-organization-id"
 # Cloud provider and region for deployments (optional - defaults shown)
 astro_cloud_provider = "AWS"
 astro_region         = "us-west-2"
+
+# Contact emails for deployment alerts
+astro_contact_emails = ["your-email@example.com"]
 
 # Astro deployment environments (optional - defaults to dev and prod)
 # Uncomment and modify to customize worker queues, resources, etc.

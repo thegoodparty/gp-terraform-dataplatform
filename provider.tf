@@ -1,9 +1,12 @@
 # Databricks workspace-level provider (for catalogs, schemas, workspace resources)
+# Uses CLI profile locally, or DATABRICKS_HOST + DATABRICKS_CLIENT_ID/SECRET in CI
 provider "databricks" {
   profile = var.databricks_workspace_profile
+  host    = var.databricks_workspace_host
 }
 
 # Databricks account-level provider (for account groups, service principals)
+# Uses CLI profile locally, or DATABRICKS_CLIENT_ID/SECRET in CI
 provider "databricks" {
   alias      = "account"
   host       = "https://accounts.cloud.databricks.com"
