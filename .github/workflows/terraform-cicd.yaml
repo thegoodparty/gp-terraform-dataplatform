@@ -24,12 +24,11 @@ on:
       environment:
         description: 'Environment to deploy'
         required: true
-        default: 'all'
+        default: 'dev'
         type: choice
         options:
           - dev
           - prod
-          - all
 
 env:
   TF_VERSION: '1.14.4'
@@ -62,7 +61,11 @@ jobs:
       - name: Create terraform.tfvars
         run: |
           # Convert comma-separated emails to Terraform list format
-          EMAILS_LIST=$(echo '${{ vars.ASTRO_CONTACT_EMAILS }}' | tr ',' '\n' | sed 's/^/"/;s/$/"/' | tr '\n' ',' | sed 's/,$//')
+          EMAILS_LIST=$(echo '${{ vars.ASTRO_CONTACT_EMAILS }}' | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length > 0))' | tr -d '[]')
+          if [ -z "$EMAILS_LIST" ]; then
+            echo "::error::ASTRO_CONTACT_EMAILS is empty or not configured"
+            exit 1
+          fi
           cat > terraform.tfvars << EOF
           databricks_account_id     = "${{ vars.DATABRICKS_ACCOUNT_ID }}"
           databricks_workspace_host = "${{ vars.DATABRICKS_WORKSPACE_HOST }}"
@@ -81,11 +84,13 @@ jobs:
       - name: Set Environment
         id: set-env
         run: |
-          # Use manual input if provided, otherwise default to 'all'
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             ENV="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+            ENV="dev"
           else
-            ENV="all"
+            # Push to main - plan prod since that's what you'd apply post-merge
+            ENV="prod"
           fi
           echo "environment=$ENV" >> $GITHUB_OUTPUT
           echo "Planning environment: $ENV"

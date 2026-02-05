@@ -89,7 +89,6 @@ CI runs `terraform plan` on every push/PR to `main`. Apply is always manual to a
 |-------------|-------------|-------------|
 | **dev** | `config/dev.tfvars` | Development only |
 | **prod** | `config/prod.tfvars` | Production only |
-| **all** | `config/all.tfvars` | Both environments |
 
 ### Environment Configuration
 
@@ -104,9 +103,6 @@ CI runs `terraform plan` on every push/PR to `main`. Apply is always manual to a
 - No hibernation
 - Kubernetes executor
 - SMALL scheduler
-
-**All** (`config/all.tfvars`):
-- Both dev and prod environments (for manual deployment)
 
 ### Applying Changes
 
@@ -124,12 +120,6 @@ source .env
 terraform apply -var-file=config/prod.tfvars
 ```
 
-**For both:**
-```bash
-source .env
-terraform apply -var-file=config/all.tfvars
-```
-
 ### Manual Dispatch
 
 To run a plan via GitHub Actions:
@@ -137,7 +127,7 @@ To run a plan via GitHub Actions:
 1. Go to **Actions** tab in GitHub
 2. Select **Terraform CI/CD** workflow
 3. Click **Run workflow**
-4. Choose environment: `dev`, `prod`, or `all`
+4. Choose environment: `dev` or `prod`
 5. Review the plan output
 
 ### GitHub Actions Setup
@@ -179,9 +169,7 @@ The workflow triggers on:
 ├── config/
 │   ├── dev.tfvars             # Dev environment config
 │   ├── prod.tfvars            # Prod environment config
-│   ├── all.tfvars             # All environments config
-│   ├── marts.yaml             # Mart definitions
-│   └── prod.tfvars            # Production Astro configuration
+│   └── marts.yaml             # Mart definitions
 ├── astro.tf                   # Astro workspace and deployments
 ├── catalog.tf                 # Databricks catalog
 ├── groups.tf                  # Databricks groups
