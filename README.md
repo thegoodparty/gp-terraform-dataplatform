@@ -108,23 +108,12 @@ CI runs `terraform plan` on every push/PR to `main`. Apply is always manual to a
 
 After reviewing the plan in CI, apply changes manually:
 
-**For both environments (recommended):**
 ```bash
 source .env
 terraform apply -var-file=config/dev.tfvars -var-file=config/prod.tfvars
 ```
 
-**For dev only:**
-```bash
-source .env
-terraform apply -var-file=config/dev.tfvars
-```
-
-**For prod only:**
-```bash
-source .env
-terraform apply -var-file=config/prod.tfvars
-```
+> **Note:** Both var files must be provided together. The deployments have `prevent_destroy = true`, so applying with only one var file would fail when trying to "destroy" the omitted environment.
 
 ### Manual Dispatch
 

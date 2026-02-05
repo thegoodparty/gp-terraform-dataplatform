@@ -174,12 +174,7 @@ jobs:
             echo "**To apply these changes after merging:**"
             echo "\`\`\`bash"
             echo "source .env"
-            echo "# Both environments (recommended)"
             echo "terraform apply -var-file=config/dev.tfvars -var-file=config/prod.tfvars"
-            echo ""
-            echo "# Or individually:"
-            echo "terraform apply -var-file=config/dev.tfvars   # dev only"
-            echo "terraform apply -var-file=config/prod.tfvars  # prod only"
             echo "\`\`\`"
           } > plan_summary.md
 
@@ -234,9 +229,5 @@ jobs:
           echo "::notice::Plan complete. Apply manually when ready."
           echo ""
           echo "To apply changes:"
-          echo "  # Both environments (recommended)"
+          echo "  source .env"
           echo "  terraform apply -var-file=config/dev.tfvars -var-file=config/prod.tfvars"
-          echo ""
-          echo "  # Or individually:"
-          echo "  terraform apply -var-file=config/dev.tfvars   # dev only"
-          echo "  terraform apply -var-file=config/prod.tfvars  # prod only"
