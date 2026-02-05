@@ -58,10 +58,6 @@ jobs:
             exit 1
           fi
 
-          # Merge dev and prod environment configs
-          DEV_ENVS=$(grep -A 100 'astro_environments' config/dev.tfvars | sed '1d' | sed '/^$/,$d' || echo "")
-          PROD_ENVS=$(grep -A 100 'astro_environments' config/prod.tfvars | sed '1d' | sed '/^$/,$d' || echo "")
-
           cat > terraform.tfvars << EOF
           databricks_account_id     = "${{ vars.DATABRICKS_ACCOUNT_ID }}"
           databricks_workspace_host = "${{ vars.DATABRICKS_WORKSPACE_HOST }}"
@@ -70,15 +66,7 @@ jobs:
           workspace_id              = "${{ vars.DATABRICKS_WORKSPACE_ID }}"
           astro_organization_id     = "${{ vars.ASTRO_ORGANIZATION_ID }}"
           astro_contact_emails      = [${EMAILS_LIST}]
-
-          astro_environments = {
-          $DEV_ENVS
-          $PROD_ENVS
-          }
           EOF
-
-          echo "Generated terraform.tfvars:"
-          cat terraform.tfvars
 
       - name: Terraform Init
         env:
@@ -89,7 +77,7 @@ jobs:
         id: plan
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
-        run: terraform plan -out=tfplan
+        run: terraform plan -var-file=config/ci.tfvars -out=tfplan
 
       - name: Analyze Plan
         id: analyze
