@@ -50,25 +50,33 @@ jobs:
           terraform_wrapper: false
 
       - name: Create terraform.tfvars
+        env:
+          # Use env mapping to prevent script injection from GitHub variables
+          DATABRICKS_ACCOUNT_ID: ${{ vars.DATABRICKS_ACCOUNT_ID }}
+          DATABRICKS_WORKSPACE_HOST: ${{ vars.DATABRICKS_WORKSPACE_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+          WORKSPACE_ID: ${{ vars.DATABRICKS_WORKSPACE_ID }}
+          ASTRO_ORGANIZATION_ID: ${{ vars.ASTRO_ORGANIZATION_ID }}
+          ASTRO_CONTACT_EMAILS: ${{ vars.ASTRO_CONTACT_EMAILS }}
         run: |
           # Convert comma-separated emails to Terraform list format
-          EMAILS_LIST=$(echo '${{ vars.ASTRO_CONTACT_EMAILS }}' | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length > 0))' | tr -d '[]')
+          EMAILS_LIST=$(echo "$ASTRO_CONTACT_EMAILS" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length > 0))' | tr -d '[]')
           if [ -z "$EMAILS_LIST" ]; then
             echo "::error::ASTRO_CONTACT_EMAILS is empty or not configured"
             exit 1
           fi
 
-          # Use quoted heredoc to prevent bash from interpreting special chars in secrets
-          cat > terraform.tfvars << 'EOF'
-          databricks_account_id     = "${{ vars.DATABRICKS_ACCOUNT_ID }}"
-          databricks_workspace_host = "${{ vars.DATABRICKS_WORKSPACE_HOST }}"
-          databricks_client_id      = "${{ secrets.DATABRICKS_CLIENT_ID }}"
-          databricks_client_secret  = "${{ secrets.DATABRICKS_CLIENT_SECRET }}"
-          workspace_id              = "${{ vars.DATABRICKS_WORKSPACE_ID }}"
-          astro_organization_id     = "${{ vars.ASTRO_ORGANIZATION_ID }}"
+          # Write terraform.tfvars using environment variables (safe from injection)
+          cat > terraform.tfvars << EOF
+          databricks_account_id     = "${DATABRICKS_ACCOUNT_ID}"
+          databricks_workspace_host = "${DATABRICKS_WORKSPACE_HOST}"
+          databricks_client_id      = "${DATABRICKS_CLIENT_ID}"
+          databricks_client_secret  = "${DATABRICKS_CLIENT_SECRET}"
+          workspace_id              = "${WORKSPACE_ID}"
+          astro_organization_id     = "${ASTRO_ORGANIZATION_ID}"
+          astro_contact_emails      = [${EMAILS_LIST}]
           EOF
-          # Append emails separately since it needs bash variable expansion
-          echo "          astro_contact_emails      = [${EMAILS_LIST}]" >> terraform.tfvars
 
       - name: Terraform Init
         env:
