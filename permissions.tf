@@ -57,10 +57,22 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["SELECT"]
   }
 
+  # dbt-users get catalog access and can create schemas
+  grant {
+    principal  = data.databricks_group.dbt_users.display_name
+    privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
+  }
+
   # ai-infra service principal gets schema access and read access across entire catalog
   grant {
     principal  = data.databricks_service_principal.ai_infra.application_id
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+  }
+
+  # zapier service principal gets catalog access for zapier_exports schema
+  grant {
+    principal  = data.databricks_service_principal.zapier.application_id
+    privileges = ["USE_CATALOG"]
   }
 
   depends_on = [
@@ -107,4 +119,40 @@ resource "databricks_grants" "mart_schemas" {
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
   ]
+}
+
+# Zapier exports schema permissions
+resource "databricks_grants" "exports_zapier_schema" {
+  schema = databricks_schema.exports_zapier.id
+
+  # zapier service principal gets read-only access
+  grant {
+    principal = data.databricks_service_principal.zapier.application_id
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT"
+    ]
+  }
+
+  # dbt-users get create/modify access
+  grant {
+    principal = data.databricks_group.dbt_users.display_name
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT",
+      "CREATE_TABLE",
+      "MODIFY"
+    ]
+  }
+
+  # dbt_cloud service principal also gets write access for automation
+  grant {
+    principal = data.databricks_service_principal.dbt_cloud.application_id
+    privileges = [
+      "USE_SCHEMA",
+      "CREATE_TABLE",
+      "MODIFY"
+    ]
+  }
+
 }
