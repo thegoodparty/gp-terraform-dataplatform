@@ -4,20 +4,10 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - '*.tf'
-      - 'config/*.tfvars'
-      - 'config/*.yaml'
-      - '.github/workflows/terraform-cicd.yaml'
 
   push:
     branches:
       - main
-    paths:
-      - '*.tf'
-      - 'config/*.tfvars'
-      - 'config/*.yaml'
-      - '.github/workflows/terraform-cicd.yaml'
 
   workflow_dispatch:
 

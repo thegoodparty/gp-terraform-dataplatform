@@ -58,14 +58,7 @@ resource "astro_deployment" "environments" {
   # Only set scaling_spec if there are hibernation schedules
   scaling_spec = length(each.value.hibernation_schedules) > 0 ? {
     hibernation_spec = {
-      schedules = [
-        for schedule in each.value.hibernation_schedules : {
-          hibernate_at_cron = schedule.hibernate_at_cron
-          wake_at_cron      = schedule.wake_at_cron
-          description       = schedule.description
-          is_enabled        = schedule.is_enabled
-        }
-      ]
+      schedules = each.value.hibernation_schedules
     }
   } : null
 
