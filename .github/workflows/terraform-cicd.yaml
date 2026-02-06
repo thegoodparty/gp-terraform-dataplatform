@@ -101,13 +101,15 @@ jobs:
           echo "destroys=$DESTROYS" >> $GITHUB_OUTPUT
           echo "replaces=$REPLACES" >> $GITHUB_OUTPUT
 
-          # Determine status
+          # Determine status - all plans require review
           if [ "$DESTROYS" -gt 0 ] || [ "$REPLACES" -gt 0 ]; then
-            STATUS="❌ Requires manual review - resources will be destroyed"
+            STATUS="❌ Resources will be destroyed or replaced"
           elif [ "$CHANGES" -gt 0 ]; then
-            STATUS="⚠️ Review recommended - resources will be modified"
+            STATUS="⚠️ Resources will be modified"
+          elif [ "$ADDS" -gt 0 ]; then
+            STATUS="➕ Resources will be added"
           else
-            STATUS="✅ Safe to merge"
+            STATUS="✅ No changes"
           fi
 
           # Helper function to format resource list
