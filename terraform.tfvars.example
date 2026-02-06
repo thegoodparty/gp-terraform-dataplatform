@@ -13,7 +13,7 @@ databricks_account_id = "00000000-0000-0000-0000-000000000000"
 workspace_id = "0000000000000000"
 
 # Databricks CLI profiles (for local development)
-# Leave these set for local dev; CI uses service principal auth instead
+# Leave these set for local dev; CI uses DATABRICKS_CLIENT_ID/SECRET env vars
 databricks_workspace_profile = "DEFAULT"
 databricks_account_profile   = "ACCOUNT"
 # databricks_workspace_host  = "https://xxx.cloud.databricks.com"  # Only needed for CI
