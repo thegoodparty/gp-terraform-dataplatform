@@ -85,20 +85,17 @@ This creates:
 
 CI runs `terraform plan` on every push/PR to `main`. Apply is always manual to avoid accidental infrastructure changes.
 
-| Environment | Config File | Description |
-|-------------|-------------|-------------|
-| **dev** | `config/dev.tfvars` | Development only |
-| **prod** | `config/prod.tfvars` | Production only |
+Both dev and prod Airflow environments are defined in `locals.tf` and always deploy together.
 
 ### Environment Configuration
 
-**Dev** (`config/dev.tfvars`):
+**Dev** (astro-dev):
 - Development mode enabled (reduced costs)
 - Hibernation schedule (sleeps overnight on weekdays)
 - Kubernetes executor
 - SMALL scheduler
 
-**Prod** (`config/prod.tfvars`):
+**Prod** (astro-prod):
 - Production mode (always on)
 - No hibernation
 - Kubernetes executor
@@ -110,10 +107,8 @@ After reviewing the plan in CI, apply changes manually:
 
 ```bash
 source .env
-terraform apply -var-file=config/dev.tfvars -var-file=config/prod.tfvars
+terraform apply
 ```
-
-> **Note:** Both var files must be provided together. The deployments have `prevent_destroy = true`, so applying with only one var file would fail when trying to "destroy" the omitted environment.
 
 ### Manual Dispatch
 
@@ -161,13 +156,11 @@ The workflow triggers on:
 │   └── workflows/
 │       └── terraform-cicd.yaml    # GitHub Actions CI/CD workflow
 ├── config/
-│   ├── dev.tfvars             # Dev environment config
-│   ├── prod.tfvars            # Prod environment config
 │   └── marts.yaml             # Mart definitions
 ├── astro.tf                   # Astro workspace and deployments
 ├── catalog.tf                 # Databricks catalog
 ├── groups.tf                  # Databricks groups
-├── locals.tf                  # Local values
+├── locals.tf                  # Local values + Astro environment configs
 ├── outputs.tf                 # Terraform outputs
 ├── permissions.tf             # Databricks grants
 ├── provider.tf                # Provider configuration

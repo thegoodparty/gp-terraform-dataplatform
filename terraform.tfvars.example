@@ -35,10 +35,4 @@ astro_region         = "us-west-2"
 # Contact emails for deployment alerts
 astro_contact_emails = ["your-email@example.com"]
 
-# Astro deployment environments
-# For local dev, include the environments you want to deploy
-# See config/dev.tfvars and config/prod.tfvars for full examples
-# Or use: terraform plan -var-file=config/dev.tfvars -var-file=config/prod.tfvars
-
-# astro_env_dev = { ... }   # Uncomment and configure, or use -var-file
-# astro_env_prod = { ... }  # Uncomment and configure, or use -var-file
+# Note: Astro environment configs (dev/prod) are defined in locals.tf

@@ -78,7 +78,7 @@ jobs:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
-        run: terraform plan -var-file=config/dev.tfvars -var-file=config/prod.tfvars -out=tfplan
+        run: terraform plan -out=tfplan
 
       - name: Analyze Plan
         id: analyze
@@ -177,7 +177,7 @@ jobs:
             echo "**To apply these changes after merging:**"
             echo "\`\`\`bash"
             echo "source .env"
-            echo "terraform apply -var-file=config/dev.tfvars -var-file=config/prod.tfvars"
+            echo "terraform apply"
             echo "\`\`\`"
           } > plan_summary.md
 
@@ -233,4 +233,4 @@ jobs:
           echo ""
           echo "To apply changes:"
           echo "  source .env"
-          echo "  terraform apply -var-file=config/dev.tfvars -var-file=config/prod.tfvars"
+          echo "  terraform apply"
