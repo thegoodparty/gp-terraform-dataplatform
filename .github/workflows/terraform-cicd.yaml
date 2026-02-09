@@ -190,13 +190,13 @@ jobs:
             echo ""
             echo "---"
             echo ""
-            echo "**To apply these changes after merging:**"
+            echo "**To apply these changes:**"
             echo ""
-            echo "1. Go to **Actions** → **Terraform CI/CD** → **Run workflow**"
-            echo "2. Check **\"Apply the plan after review\"**"
-            echo "3. Click **Run workflow**"
+            echo "1. **Merge** this PR to \`main\`"
+            echo "2. **Review** the plan in the workflow run triggered by the merge"
+            echo "3. **Deploy** via Actions → Terraform CI/CD → Run workflow → check \"Apply\""
             echo ""
-            echo "Or via CLI: \`gh workflow run terraform-cicd.yaml -f apply=true\`"
+            echo "Or via CLI after merge: \`gh workflow run terraform-cicd.yaml -f apply=true\`"
           } > plan_summary.md
 
           # Write to step summary
