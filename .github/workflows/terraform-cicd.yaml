@@ -191,10 +191,12 @@ jobs:
             echo "---"
             echo ""
             echo "**To apply these changes after merging:**"
-            echo "\`\`\`bash"
-            echo "source .env"
-            echo "terraform apply"
-            echo "\`\`\`"
+            echo ""
+            echo "1. Go to **Actions** → **Terraform CI/CD** → **Run workflow**"
+            echo "2. Check **\"Apply the plan after review\"**"
+            echo "3. Click **Run workflow**"
+            echo ""
+            echo "Or via CLI: \`gh workflow run terraform-cicd.yaml -f apply=true\`"
           } > plan_summary.md
 
           # Write to step summary
@@ -256,11 +258,14 @@ jobs:
       - name: Apply Instructions
         if: github.event_name == 'push'
         run: |
-          echo "::notice::Plan complete. Apply manually when ready."
+          echo "::notice::Plan complete. To apply, trigger the workflow manually with apply=true."
           echo ""
           echo "To apply changes:"
-          echo "  source .env"
-          echo "  terraform apply"
+          echo "  1. Go to Actions → Terraform CI/CD → Run workflow"
+          echo "  2. Check 'Apply the plan after review'"
+          echo "  3. Click Run workflow"
+          echo ""
+          echo "Or via CLI: gh workflow run terraform-cicd.yaml -f apply=true"
 
   # =============================================================================
   # Apply Job - Only runs on manual dispatch with apply=true
