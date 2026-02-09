@@ -26,6 +26,11 @@ data "databricks_service_principal" "github_action" {
   provider     = databricks.account
   display_name = "github-action"
 }
+
+data "databricks_service_principal" "looker_studio" {
+  provider     = databricks.account
+  display_name = "looker-studio"
+}
 # Data sources for existing groups (managed outside Terraform)
 data "databricks_group" "account_users" {
   provider     = databricks.account
@@ -55,6 +60,11 @@ data "databricks_group" "data_engineers" {
 data "databricks_group" "dbt_users" {
   provider     = databricks.account
   display_name = "dbt-users"
+}
+
+data "databricks_group" "token_users" {
+  provider     = databricks.account
+  display_name = "token-users"
 }
 
 # Dynamic mart reader groups from YAML configuration
