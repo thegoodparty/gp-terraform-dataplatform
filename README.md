@@ -83,7 +83,13 @@ This creates:
 
 ### Deployment Strategy
 
-CI runs `terraform plan` on every push/PR to `main`. Apply is always manual to avoid accidental infrastructure changes.
+Infrastructure changes follow a manual deployment workflow:
+
+1. **PR**: `terraform plan` runs automatically, results posted as PR comment
+2. **Merge to main**: Plan runs again to show current state
+3. **Review**: Check the plan output in the Actions workflow summary
+4. **Deploy**: Manually trigger the workflow with "Apply" checkbox enabled
+5. **Apply**: Terraform applies the plan
 
 Both dev and prod Airflow environments are defined in `locals.tf` and always deploy together.
 
@@ -101,27 +107,48 @@ Both dev and prod Airflow environments are defined in `locals.tf` and always dep
 - Kubernetes executor
 - SMALL scheduler
 
-### Applying Changes
+### Deploying Changes
 
-After reviewing the plan in CI, apply changes manually:
+1. **Merge PRs** to `main` - each PR shows a plan for review
+2. **Review the plan** in the latest workflow run on `main`
+3. **Trigger deployment** manually:
+
+   **Via GitHub UI:**
+   - Go to **Actions** tab → **Terraform CI/CD** workflow
+   - Click **Run workflow** dropdown
+   - Check the **Apply the plan after review** checkbox
+   - Click **Run workflow**
+
+   **Via CLI:**
+   ```bash
+   gh workflow run terraform-cicd.yaml -f apply=true
+   ```
+
+4. **Monitor the apply** in the workflow logs
+
+### Local Development
+
+For local testing or emergency fixes:
 
 ```bash
 source .env
+terraform plan
 terraform apply
 ```
 
-### Manual Dispatch
-
-To run a plan via GitHub Actions:
-
-1. Go to **Actions** tab in GitHub
-2. Select **Terraform CI/CD** workflow
-3. Click **Run workflow**
-4. Review the plan output (includes both dev and prod)
-
 ### GitHub Actions Setup
 
-Add these **secrets** to your GitHub repository:
+#### 1. Create the `production` Environment (optional)
+
+1. Go to **Settings** > **Environments** > **New environment**
+2. Name it `production`
+3. Under **Deployment branches and tags**:
+   - Select **Selected branches and tags**
+   - Add branch: `main`
+
+> **Note:** If you have GitHub Team/Enterprise, you can enable **Required reviewers** under Deployment protection rules for an additional approval gate.
+
+#### 2. Add Secrets
 
 | Secret | Description |
 |--------|-------------|
@@ -129,7 +156,7 @@ Add these **secrets** to your GitHub repository:
 | `DATABRICKS_CLIENT_ID` | Databricks service principal client ID |
 | `DATABRICKS_CLIENT_SECRET` | Databricks service principal secret |
 
-Add these **variables** to your GitHub repository:
+#### 3. Add Variables
 
 | Variable | Description |
 |----------|-------------|
@@ -141,10 +168,13 @@ Add these **variables** to your GitHub repository:
 | `DATABRICKS_WORKSPACE_ID` | Databricks workspace ID |
 | `DATABRICKS_WORKSPACE_HOST` | Databricks workspace URL |
 
-The workflow triggers on:
-- Pull request to `main` (plan only)
-- Push to `main` (plan only)
-- Manual dispatch (plan only)
+### Workflow Triggers
+
+| Trigger | Plan | Apply |
+|---------|------|-------|
+| Pull request | ✅ | ❌ |
+| Push to main | ✅ | ❌ |
+| Manual dispatch | ✅ | ✅ (if `apply` checkbox enabled) |
 
 ---
 
