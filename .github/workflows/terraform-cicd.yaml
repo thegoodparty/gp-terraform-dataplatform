@@ -58,7 +58,7 @@ jobs:
           ASTRO_CONTACT_EMAILS: ${{ vars.ASTRO_CONTACT_EMAILS }}
         run: |
           # Convert comma-separated emails to Terraform list format
-          EMAILS_LIST=$(echo "$ASTRO_CONTACT_EMAILS" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length > 0))' | tr -d '[]')
+          EMAILS_LIST=$(echo "$ASTRO_CONTACT_EMAILS" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length > 0))' | tr -d '[]\n')
           if [ -z "$EMAILS_LIST" ]; then
             echo "::error::ASTRO_CONTACT_EMAILS is empty or not configured"
             exit 1
