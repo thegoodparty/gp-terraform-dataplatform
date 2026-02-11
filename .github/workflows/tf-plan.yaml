@@ -1,22 +1,17 @@
-name: Terraform CI/CD
+name: Terraform Plan
 
 on:
-  pull_request:
-    branches:
-      - main
-
-  push:
-    branches:
-      - main
-
-  # Manual trigger with option to apply
-  workflow_dispatch:
-    inputs:
-      apply:
-        description: 'Apply the plan after review'
-        required: true
-        default: false
-        type: boolean
+  workflow_call:
+    outputs:
+      has_changes:
+        description: 'Whether the plan has changes'
+        value: ${{ jobs.plan.outputs.has_changes }}
+      destroys:
+        description: 'Number of resources to destroy'
+        value: ${{ jobs.plan.outputs.destroys }}
+      replaces:
+        description: 'Number of resources to replace'
+        value: ${{ jobs.plan.outputs.replaces }}
 
 env:
   TF_VERSION: '1.14.4'
@@ -28,9 +23,10 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      pull-requests: write
     outputs:
       has_changes: ${{ steps.analyze.outputs.has_changes }}
+      destroys: ${{ steps.analyze.outputs.destroys }}
+      replaces: ${{ steps.analyze.outputs.replaces }}
 
     steps:
       - name: Checkout
@@ -50,7 +46,6 @@ jobs:
 
       - name: Create terraform.tfvars
         env:
-          # Use env mapping to prevent script injection from GitHub variables
           DATABRICKS_ACCOUNT_ID: ${{ vars.DATABRICKS_ACCOUNT_ID }}
           DATABRICKS_WORKSPACE_HOST: ${{ vars.DATABRICKS_WORKSPACE_HOST }}
           WORKSPACE_ID: ${{ vars.DATABRICKS_WORKSPACE_ID }}
@@ -64,8 +59,6 @@ jobs:
             exit 1
           fi
 
-          # Write terraform.tfvars using environment variables (safe from injection)
-          # Note: Databricks auth uses DATABRICKS_CLIENT_ID/SECRET env vars directly
           cat > terraform.tfvars << EOF
           databricks_account_id     = "${DATABRICKS_ACCOUNT_ID}"
           databricks_workspace_host = "${DATABRICKS_WORKSPACE_HOST}"
@@ -82,7 +75,6 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        id: plan
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
@@ -92,16 +84,13 @@ jobs:
       - name: Analyze Plan
         id: analyze
         run: |
-          # Convert plan to JSON and extract resource changes
           terraform show -json tfplan > tfplan.json
 
-          # Count changes by action type
           ADDS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]) | not)] | length' tfplan.json)
           CHANGES=$(jq '[.resource_changes[]? | select(.change.actions | contains(["update"]))] | length' tfplan.json)
           DESTROYS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["delete"])) | select(.change.actions | contains(["create"]) | not)] | length' tfplan.json)
           REPLACES=$(jq '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]))] | length' tfplan.json)
 
-          # Get resource lists
           ADD_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]) | not) | .address] | join("\n")' tfplan.json)
           CHANGE_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["update"])) | .address] | join("\n")' tfplan.json)
           DESTROY_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["delete"])) | select(.change.actions | contains(["create"]) | not) | .address] | join("\n")' tfplan.json)
@@ -110,14 +99,12 @@ jobs:
           echo "destroys=$DESTROYS" >> $GITHUB_OUTPUT
           echo "replaces=$REPLACES" >> $GITHUB_OUTPUT
 
-          # Output whether there are any changes (for apply job)
           if [ "$ADDS" -gt 0 ] || [ "$CHANGES" -gt 0 ] || [ "$DESTROYS" -gt 0 ] || [ "$REPLACES" -gt 0 ]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
 
-          # Determine status - all plans require review
           if [ "$DESTROYS" -gt 0 ] || [ "$REPLACES" -gt 0 ]; then
             STATUS="❌ Resources will be destroyed or replaced"
           elif [ "$CHANGES" -gt 0 ]; then
@@ -128,12 +115,10 @@ jobs:
             STATUS="✅ No changes"
           fi
 
-          # Helper function to format resource list
           format_list() {
             echo "$1" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`"; done
           }
 
-          # Build markdown body
           {
             echo "# Terraform Plan Results"
             echo ""
@@ -187,131 +172,16 @@ jobs:
             echo "- **Destroy**: Resources will be permanently deleted"
             echo ""
             echo "</details>"
-            echo ""
-            echo "---"
-            echo ""
-            echo "**To apply these changes:**"
-            echo ""
-            echo "1. **Merge** this PR to \`main\`"
-            echo "2. **Review** the plan in the workflow run triggered by the merge"
-            echo "3. **Deploy** via Actions → Terraform CI/CD → Run workflow → check \"Apply\""
-            echo ""
-            echo "Or via CLI after merge: \`gh workflow run terraform-cicd.yaml -f apply=true\`"
           } > plan_summary.md
 
-          # Write to step summary
           cat plan_summary.md >> $GITHUB_STEP_SUMMARY
 
-      # Save plan for apply job (manual dispatch with apply=true)
       - name: Upload Plan Artifact
-        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
           path: |
             tfplan
             terraform.tfvars
+            plan_summary.md
           retention-days: 7
-
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- terraform-plan-comment -->';
-            const summary = fs.readFileSync('plan_summary.md', 'utf8');
-            const body = marker + '\n' + summary;
-
-            // Find and delete previous terraform plan comments
-            const { data: comments } = await github.rest.issues.listComments({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 100
-            });
-
-            for (const comment of comments) {
-              if (comment.body.includes(marker)) {
-                await github.rest.issues.deleteComment({
-                  comment_id: comment.id,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo
-                });
-              }
-            }
-
-            // Create new comment
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-
-      - name: Fail on Destroy (PR only)
-        if: github.event_name == 'pull_request' && (steps.analyze.outputs.destroys != '0' || steps.analyze.outputs.replaces != '0')
-        run: |
-          echo "::error::Plan contains ${{ steps.analyze.outputs.destroys }} destroy(s) and ${{ steps.analyze.outputs.replaces }} replace(s). Manual review required."
-          exit 1
-
-      - name: Apply Instructions
-        if: github.event_name == 'push'
-        run: |
-          echo "::notice::Plan complete. To apply, trigger the workflow manually with apply=true."
-          echo ""
-          echo "To apply changes:"
-          echo "  1. Go to Actions → Terraform CI/CD → Run workflow"
-          echo "  2. Check 'Apply the plan after review'"
-          echo "  3. Click Run workflow"
-          echo ""
-          echo "Or via CLI: gh workflow run terraform-cicd.yaml -f apply=true"
-
-  # =============================================================================
-  # Apply Job - Only runs on manual dispatch with apply=true
-  # =============================================================================
-  apply:
-    name: Terraform Apply
-    needs: plan
-    # Only run on manual dispatch with apply=true AND if there are changes
-    if: github.event_name == 'workflow_dispatch' && inputs.apply == true && needs.plan.outputs.has_changes == 'true'
-    runs-on: ubuntu-latest
-    environment: production
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-          terraform_wrapper: false
-
-      - name: Download Plan Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-
-      - name: Terraform Init
-        env:
-          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
-          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
-        run: terraform init
-
-      - name: Terraform Apply
-        env:
-          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
-          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
-        run: terraform apply -auto-approve tfplan

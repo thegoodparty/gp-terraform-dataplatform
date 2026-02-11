@@ -81,15 +81,13 @@ This creates:
 
 ## Astronomer (Astro) Airflow
 
-### Deployment Strategy
+### CI/CD Flows
 
-Infrastructure changes follow a manual deployment workflow:
-
-1. **PR**: `terraform plan` runs automatically, results posted as PR comment
-2. **Merge to main**: Plan runs again to show current state
-3. **Review**: Check the plan output in the Actions workflow summary
-4. **Deploy**: Manually trigger the workflow with "Apply" checkbox enabled
-5. **Apply**: Terraform applies the plan
+| Trigger | What happens |
+|---------|--------------|
+| **Pull Request** | Run plan, post results as PR comment |
+| **Merge to main** | Run plan again to confirm main is in a good state |
+| **Manual dispatch** | Run plan, then apply (if `dry_run` unchecked) |
 
 Both dev and prod Airflow environments are defined in `locals.tf` and always deploy together.
 
@@ -109,22 +107,18 @@ Both dev and prod Airflow environments are defined in `locals.tf` and always dep
 
 ### Deploying Changes
 
-1. **Merge PRs** to `main` - each PR shows a plan for review
-2. **Review the plan** in the latest workflow run on `main`
-3. **Trigger deployment** manually:
+1. **Merge PR** to `main` after reviewing the plan in PR comments
+2. **Trigger apply** manually:
 
    **Via GitHub UI:**
-   - Go to **Actions** tab → **Terraform CI/CD** workflow
-   - Click **Run workflow** dropdown
-   - Check the **Apply the plan after review** checkbox
+   - Go to **Actions** → **Deploy** → **Run workflow**
+   - Uncheck **"Dry run (plan only, no apply)"**
    - Click **Run workflow**
 
    **Via CLI:**
    ```bash
-   gh workflow run terraform-cicd.yaml -f apply=true
+   gh workflow run deploy.yaml -f dry_run=false
    ```
-
-4. **Monitor the apply** in the workflow logs
 
 ### Local Development
 
@@ -168,13 +162,15 @@ terraform apply
 | `DATABRICKS_WORKSPACE_ID` | Databricks workspace ID |
 | `DATABRICKS_WORKSPACE_HOST` | Databricks workspace URL |
 
-### Workflow Triggers
+### Workflows
 
-| Trigger | Plan | Apply |
-|---------|------|-------|
-| Pull request | ✅ | ❌ |
-| Push to main | ✅ | ❌ |
-| Manual dispatch | ✅ | ✅ (if `apply` checkbox enabled) |
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `on-pull-request.yaml` | Pull request | Plan + PR comment |
+| `deploy.yaml` | Push to main | Plan only (validate main) |
+| `deploy.yaml` | Manual dispatch | Plan + Apply (if `dry_run` unchecked) |
+
+Reusable workflows (`tf-plan.yaml`, `tf-apply.yaml`) are called by the above.
 
 ---
 
@@ -184,7 +180,10 @@ terraform apply
 .
 ├── .github/
 │   └── workflows/
-│       └── terraform-cicd.yaml    # GitHub Actions CI/CD workflow
+│       ├── tf-plan.yaml           # Reusable: Terraform plan
+│       ├── tf-apply.yaml          # Reusable: Terraform apply (production)
+│       ├── on-pull-request.yaml   # PR workflow: plan + comment
+│       └── deploy.yaml            # Deploy workflow: plan + apply
 ├── config/
 │   └── marts.yaml             # Mart definitions
 ├── astro.tf                   # Astro workspace and deployments
