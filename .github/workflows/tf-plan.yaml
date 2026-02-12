@@ -1,0 +1,187 @@
+name: Terraform Plan
+
+on:
+  workflow_call:
+    outputs:
+      has_changes:
+        description: 'Whether the plan has changes'
+        value: ${{ jobs.plan.outputs.has_changes }}
+      destroys:
+        description: 'Number of resources to destroy'
+        value: ${{ jobs.plan.outputs.destroys }}
+      replaces:
+        description: 'Number of resources to replace'
+        value: ${{ jobs.plan.outputs.replaces }}
+
+env:
+  TF_VERSION: '1.14.4'
+
+jobs:
+  plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      has_changes: ${{ steps.analyze.outputs.has_changes }}
+      destroys: ${{ steps.analyze.outputs.destroys }}
+      replaces: ${{ steps.analyze.outputs.replaces }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Create terraform.tfvars
+        env:
+          DATABRICKS_ACCOUNT_ID: ${{ vars.DATABRICKS_ACCOUNT_ID }}
+          DATABRICKS_WORKSPACE_HOST: ${{ vars.DATABRICKS_WORKSPACE_HOST }}
+          WORKSPACE_ID: ${{ vars.DATABRICKS_WORKSPACE_ID }}
+          ASTRO_ORGANIZATION_ID: ${{ vars.ASTRO_ORGANIZATION_ID }}
+          ASTRO_CONTACT_EMAILS: ${{ vars.ASTRO_CONTACT_EMAILS }}
+        run: |
+          # Convert comma-separated emails to Terraform list format
+          EMAILS_LIST=$(echo "$ASTRO_CONTACT_EMAILS" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length > 0))' | tr -d '[]\n')
+          if [ -z "$EMAILS_LIST" ]; then
+            echo "::error::ASTRO_CONTACT_EMAILS is empty or not configured"
+            exit 1
+          fi
+
+          cat > terraform.tfvars << EOF
+          databricks_account_id     = "${DATABRICKS_ACCOUNT_ID}"
+          databricks_workspace_host = "${DATABRICKS_WORKSPACE_HOST}"
+          workspace_id              = "${WORKSPACE_ID}"
+          astro_organization_id     = "${ASTRO_ORGANIZATION_ID}"
+          astro_contact_emails      = [${EMAILS_LIST}]
+          EOF
+
+      - name: Terraform Init
+        env:
+          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: terraform init
+
+      - name: Terraform Plan
+        env:
+          ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: terraform plan -out=tfplan
+
+      - name: Analyze Plan
+        id: analyze
+        run: |
+          terraform show -json tfplan > tfplan.json
+
+          ADDS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]) | not)] | length' tfplan.json)
+          CHANGES=$(jq '[.resource_changes[]? | select(.change.actions | contains(["update"]))] | length' tfplan.json)
+          DESTROYS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["delete"])) | select(.change.actions | contains(["create"]) | not)] | length' tfplan.json)
+          REPLACES=$(jq '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]))] | length' tfplan.json)
+
+          ADD_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]) | not) | .address] | join("\n")' tfplan.json)
+          CHANGE_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["update"])) | .address] | join("\n")' tfplan.json)
+          DESTROY_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["delete"])) | select(.change.actions | contains(["create"]) | not) | .address] | join("\n")' tfplan.json)
+          REPLACE_LIST=$(jq -r '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"])) | .address] | join("\n")' tfplan.json)
+
+          echo "destroys=$DESTROYS" >> $GITHUB_OUTPUT
+          echo "replaces=$REPLACES" >> $GITHUB_OUTPUT
+
+          if [ "$ADDS" -gt 0 ] || [ "$CHANGES" -gt 0 ] || [ "$DESTROYS" -gt 0 ] || [ "$REPLACES" -gt 0 ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+          if [ "$DESTROYS" -gt 0 ] || [ "$REPLACES" -gt 0 ]; then
+            STATUS="❌ Resources will be destroyed or replaced"
+          elif [ "$CHANGES" -gt 0 ]; then
+            STATUS="⚠️ Resources will be modified"
+          elif [ "$ADDS" -gt 0 ]; then
+            STATUS="➕ Resources will be added"
+          else
+            STATUS="✅ No changes"
+          fi
+
+          format_list() {
+            echo "$1" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`"; done
+          }
+
+          {
+            echo "# Terraform Plan Results"
+            echo ""
+            echo "| Action | Count | Status |"
+            echo "|--------|-------|--------|"
+            echo "| Create | $ADDS | ✅ |"
+            echo "| Update | $CHANGES | ⚠️ |"
+            echo "| Replace | $REPLACES | ❌ |"
+            echo "| Destroy | $DESTROYS | ❌ |"
+            echo ""
+            echo "**${STATUS}**"
+
+            if [ "$ADDS" -gt 0 ]; then
+              echo ""
+              echo "## Resources to create:"
+              format_list "$ADD_LIST"
+            fi
+
+            if [ "$CHANGES" -gt 0 ]; then
+              echo ""
+              echo "## Resources to update:"
+              format_list "$CHANGE_LIST"
+            fi
+
+            if [ "$REPLACES" -gt 0 ]; then
+              echo ""
+              echo "## ⚠️ Resources to replace:"
+              format_list "$REPLACE_LIST"
+            fi
+
+            if [ "$DESTROYS" -gt 0 ]; then
+              echo ""
+              echo "## ❌ Resources to destroy:"
+              format_list "$DESTROY_LIST"
+            fi
+
+            if [ "$ADDS" -eq 0 ] && [ "$CHANGES" -eq 0 ] && [ "$DESTROYS" -eq 0 ] && [ "$REPLACES" -eq 0 ]; then
+              echo ""
+              echo "## ✅ No changes detected"
+            fi
+
+            echo ""
+            echo "---"
+            echo ""
+            echo "<details>"
+            echo "<summary>What do these mean?</summary>"
+            echo ""
+            echo "- **Create**: New resources will be added"
+            echo "- **Update**: Existing resources will be modified in-place"
+            echo "- **Replace**: Resources will be destroyed and recreated (data loss possible)"
+            echo "- **Destroy**: Resources will be permanently deleted"
+            echo ""
+            echo "</details>"
+          } > plan_summary.md
+
+          cat plan_summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: |
+            tfplan
+            terraform.tfvars
+            plan_summary.md
+          retention-days: 7

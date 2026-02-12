@@ -1,5 +1,9 @@
-# Example Terraform variables for Good Party Databricks Unity Catalog setup
+# Example Terraform variables for Good Party Data Platform
 # Copy this to terraform.tfvars and fill in your values
+
+# =============================================================================
+# Databricks Configuration
+# =============================================================================
 
 # Databricks Account ID
 # Get this from https://accounts.cloud.databricks.com/
@@ -8,6 +12,27 @@ databricks_account_id = "00000000-0000-0000-0000-000000000000"
 # Databricks workspace ID for account-level operations
 workspace_id = "0000000000000000"
 
-# Databricks CLI profiles (optional - defaults shown)
+# Databricks CLI profiles (for local development)
+# Leave these set for local dev; CI uses DATABRICKS_CLIENT_ID/SECRET env vars
 databricks_workspace_profile = "DEFAULT"
 databricks_account_profile   = "ACCOUNT"
+# databricks_workspace_host  = "https://xxx.cloud.databricks.com"  # Only needed for CI
+
+# =============================================================================
+# Astronomer (Astro) Configuration
+# =============================================================================
+# Note: Set the ASTRO_API_TOKEN environment variable for authentication
+# export ASTRO_API_TOKEN="your-api-token"
+
+# Astronomer Organization ID
+# Get this from Organization Settings in Astro
+astro_organization_id = "your-astro-organization-id"
+
+# Cloud provider and region for deployments (optional - defaults shown)
+astro_cloud_provider = "AWS"
+astro_region         = "us-west-2"
+
+# Contact emails for deployment alerts
+astro_contact_emails = ["your-email@example.com"]
+
+# Note: Astro environment configs (dev/prod) are defined in locals.tf

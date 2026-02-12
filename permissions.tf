@@ -75,6 +75,12 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
+  # github-action service principal for CI/CD (read-only for terraform plan)
+  grant {
+    principal  = data.databricks_service_principal.github_action.application_id
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+  }
+
   depends_on = [
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
@@ -112,6 +118,15 @@ resource "databricks_grants" "mart_schemas" {
       "USE_SCHEMA",
       "CREATE_TABLE",
       "MODIFY"
+    ]
+  }
+
+  # github-action service principal for CI/CD (read-only for terraform plan)
+  grant {
+    principal = data.databricks_service_principal.github_action.application_id
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT"
     ]
   }
 
@@ -155,4 +170,41 @@ resource "databricks_grants" "exports_zapier_schema" {
     ]
   }
 
+}
+
+# =============================================================================
+# Token (PAT) Permissions
+# =============================================================================
+# Manage who can create and use Personal Access Tokens
+
+resource "databricks_permissions" "token_usage" {
+  authorization = "tokens"
+
+  # Admins can manage tokens (built-in, always present)
+  access_control {
+    group_name       = "admins"
+    permission_level = "CAN_MANAGE"
+  }
+
+  # Service principals that need token access
+  access_control {
+    service_principal_name = data.databricks_service_principal.ai_infra.application_id
+    permission_level       = "CAN_USE"
+  }
+
+  access_control {
+    service_principal_name = data.databricks_service_principal.looker_studio.application_id
+    permission_level       = "CAN_USE"
+  }
+
+  # Groups that can create/use tokens
+  access_control {
+    group_name       = data.databricks_group.token_users.display_name
+    permission_level = "CAN_USE"
+  }
+
+  access_control {
+    group_name       = data.databricks_group.dbt_users.display_name
+    permission_level = "CAN_USE"
+  }
 }
