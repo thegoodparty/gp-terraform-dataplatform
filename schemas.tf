@@ -12,6 +12,9 @@ resource "databricks_schema" "exports_zapier" {
   lifecycle {
     prevent_destroy = true
   }
+
+  # Wait for catalog grants (including CREATE_SCHEMA for github-action SP)
+  depends_on = [databricks_grants.catalog_main]
 }
 
 # Dynamic mart schemas from YAML configuration
