@@ -75,10 +75,10 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
-  # github-action service principal for CI/CD (read-only for terraform plan)
+  # github-action service principal for CI/CD
   grant {
     principal  = data.databricks_service_principal.github_action.application_id
-    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
   }
 
   depends_on = [
@@ -180,11 +180,7 @@ resource "databricks_grants" "exports_zapier_schema" {
 resource "databricks_permissions" "token_usage" {
   authorization = "tokens"
 
-  # Admins can manage tokens (built-in, always present)
-  access_control {
-    group_name       = "admins"
-    permission_level = "CAN_MANAGE"
-  }
+  # Note: admins group has CAN_MANAGE by default (built-in, cannot be modified)
 
   # Service principals that need token access
   access_control {

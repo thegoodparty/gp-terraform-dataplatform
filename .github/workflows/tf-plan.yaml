@@ -52,9 +52,8 @@ jobs:
           ASTRO_ORGANIZATION_ID: ${{ vars.ASTRO_ORGANIZATION_ID }}
           ASTRO_CONTACT_EMAILS: ${{ vars.ASTRO_CONTACT_EMAILS }}
         run: |
-          # Convert comma-separated emails to Terraform list format
-          EMAILS_LIST=$(echo "$ASTRO_CONTACT_EMAILS" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length > 0))' | tr -d '[]\n')
-          if [ -z "$EMAILS_LIST" ]; then
+          # ASTRO_CONTACT_EMAILS should be a JSON array: ["email1", "email2"]
+          if [ -z "$ASTRO_CONTACT_EMAILS" ] || [ "$ASTRO_CONTACT_EMAILS" = "[]" ]; then
             echo "::error::ASTRO_CONTACT_EMAILS is empty or not configured"
             exit 1
           fi
@@ -64,7 +63,7 @@ jobs:
           databricks_workspace_host = "${DATABRICKS_WORKSPACE_HOST}"
           workspace_id              = "${WORKSPACE_ID}"
           astro_organization_id     = "${ASTRO_ORGANIZATION_ID}"
-          astro_contact_emails      = [${EMAILS_LIST}]
+          astro_contact_emails      = ${ASTRO_CONTACT_EMAILS}
           EOF
 
       - name: Terraform Init
