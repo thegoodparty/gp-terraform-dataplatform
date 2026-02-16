@@ -215,6 +215,8 @@ resource "databricks_permissions" "token_usage" {
     group_name       = data.databricks_group.dbt_users.display_name
     permission_level = "CAN_USE"
   }
+
+  depends_on = [databricks_mws_permission_assignment.airflow]
 }
 
 # =============================================================================
