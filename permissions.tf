@@ -81,6 +81,13 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
   }
 
+  # airflow service principal gets catalog-level navigation only;
+  # write access is scoped to airflow_source schema (see below)
+  grant {
+    principal  = databricks_service_principal.airflow.application_id
+    privileges = ["USE_CATALOG"]
+  }
+
   depends_on = [
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
@@ -193,6 +200,11 @@ resource "databricks_permissions" "token_usage" {
     permission_level       = "CAN_USE"
   }
 
+  access_control {
+    service_principal_name = databricks_service_principal.airflow.application_id
+    permission_level       = "CAN_USE"
+  }
+
   # Groups that can create/use tokens
   access_control {
     group_name       = data.databricks_group.token_users.display_name
@@ -202,5 +214,19 @@ resource "databricks_permissions" "token_usage" {
   access_control {
     group_name       = data.databricks_group.dbt_users.display_name
     permission_level = "CAN_USE"
+  }
+}
+
+# =============================================================================
+# airflow_source Schema Permissions
+# =============================================================================
+# Scoped write access for the Airflow service principal (expired voter deletion)
+
+resource "databricks_grants" "airflow_source_schema" {
+  schema = data.databricks_schema.airflow_source.id
+
+  grant {
+    principal  = databricks_service_principal.airflow.application_id
+    privileges = ["USE_SCHEMA", "SELECT", "MODIFY"]
   }
 }

@@ -1,3 +1,8 @@
+# Data source for airflow_source schema (not managed by Terraform)
+data "databricks_schema" "airflow_source" {
+  name = "${databricks_catalog.main.name}.airflow_source"
+}
+
 # Zapier exports schema for data exported to Zapier integrations
 resource "databricks_schema" "exports_zapier" {
   catalog_name = databricks_catalog.main.name
