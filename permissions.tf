@@ -223,7 +223,7 @@ resource "databricks_permissions" "token_usage" {
 # Scoped write access for the Airflow service principal (expired voter deletion)
 
 resource "databricks_grants" "airflow_source_schema" {
-  schema = data.databricks_schema.airflow_source.id
+  schema = databricks_schema.airflow_source.id
 
   grant {
     principal  = databricks_service_principal.airflow.application_id

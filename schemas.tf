@@ -1,6 +1,19 @@
-# Data source for airflow_source schema (not managed by Terraform)
-data "databricks_schema" "airflow_source" {
-  name = "${databricks_catalog.main.name}.airflow_source"
+# Schema for Airflow-managed source data (e.g. expired voter records)
+resource "databricks_schema" "airflow_source" {
+  catalog_name = databricks_catalog.main.name
+  name         = "airflow_source"
+  comment      = "Schema for Airflow-managed source data"
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "source"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [databricks_grants.catalog_main]
 }
 
 # Zapier exports schema for data exported to Zapier integrations
