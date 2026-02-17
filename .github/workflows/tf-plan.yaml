@@ -84,6 +84,7 @@ jobs:
         id: analyze
         run: |
           terraform show -json tfplan > tfplan.json
+          terraform show -no-color tfplan > tfplan.txt
 
           ADDS=$(jq '[.resource_changes[]? | select(.change.actions | contains(["create"])) | select(.change.actions | contains(["delete"]) | not)] | length' tfplan.json)
           CHANGES=$(jq '[.resource_changes[]? | select(.change.actions | contains(["update"]))] | length' tfplan.json)
@@ -118,15 +119,12 @@ jobs:
             echo "$1" | while read -r line; do [ -n "$line" ] && echo "- \`$line\`"; done
           }
 
+          TOTAL=$((ADDS + CHANGES + DESTROYS + REPLACES))
+
           {
             echo "# Terraform Plan Results"
             echo ""
-            echo "| Action | Count | Status |"
-            echo "|--------|-------|--------|"
-            echo "| Create | $ADDS | ✅ |"
-            echo "| Update | $CHANGES | ⚠️ |"
-            echo "| Replace | $REPLACES | ❌ |"
-            echo "| Destroy | $DESTROYS | ❌ |"
+            echo "**${TOTAL} change(s):** ${ADDS} to create, ${CHANGES} to update, ${REPLACES} to replace, ${DESTROYS} to destroy"
             echo ""
             echo "**${STATUS}**"
 
@@ -157,6 +155,18 @@ jobs:
             if [ "$ADDS" -eq 0 ] && [ "$CHANGES" -eq 0 ] && [ "$DESTROYS" -eq 0 ] && [ "$REPLACES" -eq 0 ]; then
               echo ""
               echo "## ✅ No changes detected"
+            fi
+
+            if [ "$TOTAL" -gt 0 ]; then
+              echo ""
+              echo "<details>"
+              echo "<summary>Show diff</summary>"
+              echo ""
+              echo '```'
+              cat tfplan.txt
+              echo '```'
+              echo ""
+              echo "</details>"
             fi
 
             echo ""
