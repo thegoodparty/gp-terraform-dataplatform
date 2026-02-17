@@ -1,7 +1,15 @@
-# Schema for Airflow-managed source data (e.g. expired voter records)
+# Schemas for Airflow-managed source data (e.g. expired voter records)
+locals {
+  airflow_source_schemas = {
+    airflow_source     = "airflow_source"
+    airflow_source_dev = "airflow_source_dev"
+  }
+}
+
 resource "databricks_schema" "airflow_source" {
+  for_each     = local.airflow_source_schemas
   catalog_name = databricks_catalog.main.name
-  name         = "airflow_source"
+  name         = each.value
   comment      = "Schema for Airflow-managed source data"
 
   properties = {

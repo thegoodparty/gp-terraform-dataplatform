@@ -81,11 +81,14 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
   }
 
-  # airflow service principal gets catalog-level navigation only;
-  # write access is scoped to airflow_source schema (see below)
-  grant {
-    principal  = databricks_service_principal.airflow.application_id
-    privileges = ["USE_CATALOG"]
+  # airflow service principals get catalog-level navigation only;
+  # write access is scoped to their respective airflow_source schemas (see below)
+  dynamic "grant" {
+    for_each = databricks_service_principal.airflow
+    content {
+      principal  = grant.value.application_id
+      privileges = ["USE_CATALOG"]
+    }
   }
 
   depends_on = [
@@ -201,7 +204,12 @@ resource "databricks_permissions" "token_usage" {
   }
 
   access_control {
-    service_principal_name = databricks_service_principal.airflow.application_id
+    service_principal_name = databricks_service_principal.airflow["airflow"].application_id
+    permission_level       = "CAN_USE"
+  }
+
+  access_control {
+    service_principal_name = databricks_service_principal.airflow["airflow_dev"].application_id
     permission_level       = "CAN_USE"
   }
 
@@ -216,19 +224,31 @@ resource "databricks_permissions" "token_usage" {
     permission_level = "CAN_USE"
   }
 
-  depends_on = [databricks_mws_permission_assignment.airflow]
+  depends_on = [
+    databricks_mws_permission_assignment.airflow
+  ]
 }
 
 # =============================================================================
 # airflow_source Schema Permissions
 # =============================================================================
-# Scoped write access for the Airflow service principal (expired voter deletion)
+# Scoped write access for each Airflow SP to its own schema:
+#   airflow     -> airflow_source
+#   airflow_dev -> airflow_source_dev
+
+locals {
+  airflow_schema_grants = {
+    airflow_source     = { sp_key = "airflow" }
+    airflow_source_dev = { sp_key = "airflow_dev" }
+  }
+}
 
 resource "databricks_grants" "airflow_source_schema" {
-  schema = databricks_schema.airflow_source.id
+  for_each = local.airflow_schema_grants
+  schema   = databricks_schema.airflow_source[each.key].id
 
   grant {
-    principal  = databricks_service_principal.airflow.application_id
+    principal  = databricks_service_principal.airflow[each.value.sp_key].application_id
     privileges = ["USE_SCHEMA", "SELECT", "MODIFY"]
   }
 }
