@@ -81,6 +81,15 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
   }
 
+  # airflow service principals can create and own their own schemas
+  dynamic "grant" {
+    for_each = databricks_service_principal.airflow
+    content {
+      principal  = grant.value.application_id
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
+    }
+  }
+
   depends_on = [
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
@@ -203,4 +212,5 @@ resource "databricks_permissions" "token_usage" {
     group_name       = data.databricks_group.dbt_users.display_name
     permission_level = "CAN_USE"
   }
+
 }

@@ -67,6 +67,14 @@ data "databricks_group" "token_users" {
   display_name = "token-users"
 }
 
+# Add Airflow service principals to token-users group
+resource "databricks_group_member" "airflow_token_users" {
+  for_each  = local.airflow_service_principals
+  provider  = databricks.account
+  group_id  = data.databricks_group.token_users.id
+  member_id = databricks_service_principal.airflow[each.key].id
+}
+
 # Dynamic mart reader groups from YAML configuration
 resource "databricks_group" "mart_readers_account" {
   for_each = local.marts_map
