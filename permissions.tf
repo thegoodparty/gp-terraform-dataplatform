@@ -81,13 +81,12 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
   }
 
-  # airflow service principals get catalog-level navigation only;
-  # write access is scoped to their respective airflow_source schemas (see below)
+  # airflow service principals can create and own their own schemas
   dynamic "grant" {
     for_each = databricks_service_principal.airflow
     content {
       principal  = grant.value.application_id
-      privileges = ["USE_CATALOG"]
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
     }
   }
 
@@ -203,16 +202,6 @@ resource "databricks_permissions" "token_usage" {
     permission_level       = "CAN_USE"
   }
 
-  access_control {
-    service_principal_name = databricks_service_principal.airflow["airflow"].application_id
-    permission_level       = "CAN_USE"
-  }
-
-  access_control {
-    service_principal_name = databricks_service_principal.airflow["airflow_dev"].application_id
-    permission_level       = "CAN_USE"
-  }
-
   # Groups that can create/use tokens
   access_control {
     group_name       = data.databricks_group.token_users.display_name
@@ -224,31 +213,4 @@ resource "databricks_permissions" "token_usage" {
     permission_level = "CAN_USE"
   }
 
-  depends_on = [
-    databricks_mws_permission_assignment.airflow
-  ]
-}
-
-# =============================================================================
-# airflow_source Schema Permissions
-# =============================================================================
-# Scoped write access for each Airflow SP to its own schema:
-#   airflow     -> airflow_source
-#   airflow_dev -> airflow_source_dev
-
-locals {
-  airflow_schema_grants = {
-    airflow_source     = { sp_key = "airflow" }
-    airflow_source_dev = { sp_key = "airflow_dev" }
-  }
-}
-
-resource "databricks_grants" "airflow_source_schema" {
-  for_each = local.airflow_schema_grants
-  schema   = databricks_schema.airflow_source[each.key].id
-
-  grant {
-    principal  = databricks_service_principal.airflow[each.value.sp_key].application_id
-    privileges = ["USE_SCHEMA", "SELECT", "MODIFY"]
-  }
 }

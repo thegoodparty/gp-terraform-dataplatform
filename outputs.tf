@@ -30,19 +30,6 @@ output "dbt_developers_group" {
 }
 
 # =============================================================================
-# Airflow Service Principal Outputs
-# =============================================================================
-
-output "airflow_sp_client_ids" {
-  description = "OAuth client IDs for the Airflow service principals"
-  value = {
-    for key, sp in databricks_service_principal.airflow :
-    key => sp.application_id
-  }
-  sensitive = true
-}
-
-# =============================================================================
 # Astronomer (Astro) Outputs
 # =============================================================================
 

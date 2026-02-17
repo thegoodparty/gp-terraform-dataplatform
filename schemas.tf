@@ -1,29 +1,3 @@
-# Schemas for Airflow-managed source data (e.g. expired voter records)
-locals {
-  airflow_source_schemas = {
-    airflow_source     = "airflow_source"
-    airflow_source_dev = "airflow_source_dev"
-  }
-}
-
-resource "databricks_schema" "airflow_source" {
-  for_each     = local.airflow_source_schemas
-  catalog_name = databricks_catalog.main.name
-  name         = each.value
-  comment      = "Schema for Airflow-managed source data"
-
-  properties = {
-    managed_by = "terraform"
-    purpose    = "source"
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-
-  depends_on = [databricks_grants.catalog_main]
-}
-
 # Zapier exports schema for data exported to Zapier integrations
 resource "databricks_schema" "exports_zapier" {
   catalog_name = databricks_catalog.main.name
