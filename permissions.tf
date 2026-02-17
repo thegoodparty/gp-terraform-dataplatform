@@ -182,6 +182,27 @@ resource "databricks_grants" "exports_zapier_schema" {
 }
 
 # =============================================================================
+# Compute Cluster Permissions
+# =============================================================================
+# Grant Airflow service principals access to the shared compute cluster
+
+data "databricks_cluster" "classic" {
+  cluster_name = "classic-cluster"
+}
+
+resource "databricks_permissions" "cluster_classic" {
+  cluster_id = data.databricks_cluster.classic.id
+
+  dynamic "access_control" {
+    for_each = databricks_service_principal.airflow
+    content {
+      service_principal_name = access_control.value.application_id
+      permission_level       = "CAN_ATTACH_TO"
+    }
+  }
+}
+
+# =============================================================================
 # Token (PAT) Permissions
 # =============================================================================
 # Manage who can create and use Personal Access Tokens
