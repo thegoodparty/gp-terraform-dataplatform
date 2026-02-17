@@ -184,12 +184,31 @@ resource "databricks_grants" "exports_zapier_schema" {
 # =============================================================================
 # Compute Cluster Permissions
 # =============================================================================
-# Grant Airflow service principals access to the shared compute cluster
-# classic-cluster: 0409-211859-6hzpukya
+# Grant permissions on the shared compute cluster (classic-cluster)
+
+data "databricks_cluster" "classic" {
+  cluster_name = "classic-cluster"
+}
 
 resource "databricks_permissions" "cluster_classic" {
-  cluster_id = "0409-211859-6hzpukya"
+  cluster_id = data.databricks_cluster.classic.id
 
+  access_control {
+    group_name       = "admins"
+    permission_level = "CAN_MANAGE"
+  }
+
+  access_control {
+    group_name       = data.databricks_group.dbt_users.display_name
+    permission_level = "CAN_ATTACH_TO"
+  }
+
+  access_control {
+    service_principal_name = data.databricks_service_principal.airbyte.application_id
+    permission_level       = "CAN_ATTACH_TO"
+  }
+
+  # Airflow service principals
   dynamic "access_control" {
     for_each = databricks_service_principal.airflow
     content {
