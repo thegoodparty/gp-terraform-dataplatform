@@ -185,13 +185,10 @@ resource "databricks_grants" "exports_zapier_schema" {
 # Compute Cluster Permissions
 # =============================================================================
 # Grant Airflow service principals access to the shared compute cluster
-
-data "databricks_cluster" "classic" {
-  cluster_name = "classic-cluster"
-}
+# classic-cluster: 0409-211859-6hzpukya
 
 resource "databricks_permissions" "cluster_classic" {
-  cluster_id = data.databricks_cluster.classic.id
+  cluster_id = "0409-211859-6hzpukya"
 
   dynamic "access_control" {
     for_each = databricks_service_principal.airflow
