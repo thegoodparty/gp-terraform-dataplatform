@@ -197,12 +197,12 @@ resource "databricks_permissions" "cluster_classic" {
 
   access_control {
     group_name       = data.databricks_group.dbt_users.display_name
-    permission_level = "CAN_ATTACH_TO"
+    permission_level = "CAN_RESTART"
   }
 
   access_control {
     service_principal_name = data.databricks_service_principal.airbyte.application_id
-    permission_level       = "CAN_ATTACH_TO"
+    permission_level       = "CAN_RESTART"
   }
 
   # Airflow service principals
@@ -210,7 +210,7 @@ resource "databricks_permissions" "cluster_classic" {
     for_each = databricks_service_principal.airflow
     content {
       service_principal_name = access_control.value.application_id
-      permission_level       = "CAN_ATTACH_TO"
+      permission_level       = "CAN_RESTART"
     }
   }
 }
