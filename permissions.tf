@@ -193,10 +193,7 @@ data "databricks_cluster" "classic" {
 resource "databricks_permissions" "cluster_classic" {
   cluster_id = data.databricks_cluster.classic.id
 
-  access_control {
-    group_name       = "admins"
-    permission_level = "CAN_MANAGE"
-  }
+  # Note: admins group has CAN_MANAGE by default (built-in, cannot be modified)
 
   access_control {
     group_name       = data.databricks_group.dbt_users.display_name
