@@ -248,3 +248,27 @@ resource "databricks_permissions" "token_usage" {
   }
 
 }
+
+# =============================================================================
+# Table-level Permissions for Airflow expired voter deletions (DATA-1534)
+# =============================================================================
+
+locals {
+  airflow_modify_tables = toset([
+    "int__l2_nationwide_uniform",
+    "m_people_api__voter",
+  ])
+}
+
+resource "databricks_grants" "airflow_voter_tables" {
+  for_each = local.airflow_modify_tables
+  table    = "${databricks_catalog.main.name}.dbt.${each.value}"
+
+  dynamic "grant" {
+    for_each = databricks_service_principal.airflow
+    content {
+      principal  = grant.value.application_id
+      privileges = ["MODIFY"]
+    }
+  }
+}
