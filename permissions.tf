@@ -250,6 +250,24 @@ resource "databricks_permissions" "token_usage" {
 }
 
 # =============================================================================
+# SQL Warehouse Permissions
+# =============================================================================
+# Re-added to match state — was previously removed from code causing drift.
+
+data "databricks_sql_warehouses" "starter" {
+  warehouse_name_contains = "Starter"
+}
+
+resource "databricks_permissions" "sql_warehouse_starter" {
+  sql_endpoint_id = one(data.databricks_sql_warehouses.starter.ids)
+
+  access_control {
+    group_name       = data.databricks_group.account_users.display_name
+    permission_level = "CAN_USE"
+  }
+}
+
+# =============================================================================
 # Table-level Permissions for Airflow expired voter deletions (DATA-1534)
 # =============================================================================
 
