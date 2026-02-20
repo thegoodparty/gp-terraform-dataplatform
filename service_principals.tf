@@ -26,3 +26,17 @@ resource "databricks_mws_permission_assignment" "airflow" {
   principal_id = databricks_service_principal.airflow[each.key].id
   permissions  = ["USER"]
 }
+
+# dbt Cloud staging service principal for the staging deployment environment
+resource "databricks_service_principal" "dbt_cloud_staging" {
+  provider     = databricks.account
+  display_name = "dbt_cloud_staging"
+  lifecycle { prevent_destroy = true }
+}
+
+resource "databricks_mws_permission_assignment" "dbt_cloud_staging" {
+  provider     = databricks.account
+  workspace_id = var.workspace_id
+  principal_id = databricks_service_principal.dbt_cloud_staging.id
+  permissions  = ["USER"]
+}
