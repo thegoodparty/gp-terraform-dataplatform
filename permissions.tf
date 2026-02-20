@@ -284,6 +284,24 @@ resource "databricks_grants" "dbt_staging_schema" {
 }
 
 # =============================================================================
+# SQL Warehouse Permissions
+# =============================================================================
+
+resource "databricks_permissions" "sql_warehouse_starter" {
+  sql_endpoint_id = "18583d8b081c6486"
+
+  access_control {
+    user_name        = "hugh@goodparty.org"
+    permission_level = "IS_OWNER"
+  }
+
+  access_control {
+    group_name       = "users"
+    permission_level = "CAN_USE"
+  }
+}
+
+# =============================================================================
 # Table-level Permissions for Airflow expired voter deletions (DATA-1534)
 # =============================================================================
 
