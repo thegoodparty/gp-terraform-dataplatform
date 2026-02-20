@@ -198,6 +198,13 @@ data "databricks_sql_warehouse" "starter" {
 resource "databricks_permissions" "sql_warehouse_starter" {
   sql_endpoint_id = data.databricks_sql_warehouse.starter.id
 
+  # Note: admins group has CAN_MANAGE by default (built-in, cannot be modified)
+
+  access_control {
+    group_name       = data.databricks_group.account_users.display_name
+    permission_level = "CAN_USE"
+  }
+
   access_control {
     service_principal_name = databricks_service_principal.segment_storage.application_id
     permission_level       = "CAN_USE"
