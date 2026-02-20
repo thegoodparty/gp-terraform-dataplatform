@@ -17,6 +17,24 @@ resource "databricks_schema" "exports_zapier" {
   depends_on = [databricks_grants.catalog_main]
 }
 
+# dbt Cloud staging schema for the staging deployment environment
+resource "databricks_schema" "dbt_staging" {
+  catalog_name = databricks_catalog.main.name
+  name         = "dbt_staging"
+  comment      = "Schema for dbt Cloud staging environment"
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "dbt_staging"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [databricks_grants.catalog_main]
+}
+
 # Dynamic mart schemas from YAML configuration
 resource "databricks_schema" "marts" {
   for_each = local.marts_map

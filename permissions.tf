@@ -23,6 +23,13 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "MODIFY", "CREATE_TABLE", "CREATE_SCHEMA"]
   }
 
+  # dbt_cloud_staging service principal gets read access across catalog,
+  # write access is scoped to the dbt_staging schema only
+  grant {
+    principal  = databricks_service_principal.dbt_cloud_staging.application_id
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+  }
+
   # airbyte service principal gets catalog access
   grant {
     principal  = data.databricks_service_principal.airbyte.application_id
@@ -213,6 +220,11 @@ resource "databricks_permissions" "cluster_classic" {
       permission_level       = "CAN_RESTART"
     }
   }
+
+  access_control {
+    service_principal_name = databricks_service_principal.dbt_cloud_staging.application_id
+    permission_level       = "CAN_RESTART"
+  }
 }
 
 # =============================================================================
@@ -236,6 +248,11 @@ resource "databricks_permissions" "token_usage" {
     permission_level       = "CAN_USE"
   }
 
+  access_control {
+    service_principal_name = databricks_service_principal.dbt_cloud_staging.application_id
+    permission_level       = "CAN_USE"
+  }
+
   # Groups that can create/use tokens
   access_control {
     group_name       = data.databricks_group.token_users.display_name
@@ -247,6 +264,23 @@ resource "databricks_permissions" "token_usage" {
     permission_level = "CAN_USE"
   }
 
+}
+
+# =============================================================================
+# dbt Cloud Staging Schema Permissions
+# =============================================================================
+
+resource "databricks_grants" "dbt_staging_schema" {
+  schema = databricks_schema.dbt_staging.id
+
+  grant {
+    principal = databricks_service_principal.dbt_cloud_staging.application_id
+    privileges = [
+      "USE_SCHEMA",
+      "CREATE_TABLE",
+      "MODIFY"
+    ]
+  }
 }
 
 # =============================================================================
