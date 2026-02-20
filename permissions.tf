@@ -92,7 +92,7 @@ resource "databricks_grants" "catalog_main" {
 
   # Segment SP - creates and owns its own schemas for storage destination
   grant {
-    principal  = databricks_service_principal.segment.application_id
+    principal  = databricks_service_principal.segment_storage.application_id
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE"]
   }
 
@@ -199,7 +199,7 @@ resource "databricks_permissions" "sql_warehouse_starter" {
   sql_endpoint_id = data.databricks_sql_warehouse.starter.id
 
   access_control {
-    service_principal_name = databricks_service_principal.segment.application_id
+    service_principal_name = databricks_service_principal.segment_storage.application_id
     permission_level       = "CAN_USE"
   }
 }

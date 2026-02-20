@@ -27,7 +27,7 @@ resource "databricks_mws_permission_assignment" "airflow" {
   permissions  = ["USER"]
 }
 
-resource "databricks_service_principal" "segment" {
+resource "databricks_service_principal" "segment_storage" {
   provider     = databricks.account
   display_name = "segment_storage"
 
@@ -36,9 +36,9 @@ resource "databricks_service_principal" "segment" {
   }
 }
 
-resource "databricks_mws_permission_assignment" "segment" {
+resource "databricks_mws_permission_assignment" "segment_storage" {
   provider     = databricks.account
   workspace_id = var.workspace_id
-  principal_id = databricks_service_principal.segment.id
+  principal_id = databricks_service_principal.segment_storage.id
   permissions  = ["USER"]
 }
