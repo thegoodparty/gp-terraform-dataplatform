@@ -18,6 +18,7 @@ resource "databricks_catalog" "segment_storage" {
   name           = "segment_storage"
   comment        = "Dedicated catalog for Segment storage destination"
   isolation_mode = "OPEN"
+  storage_root   = "s3://goodparty-warehouse-databricks/segment_storage"
 
   properties = {
     managed_by = "terraform"
