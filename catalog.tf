@@ -13,3 +13,17 @@ resource "databricks_catalog" "main" {
     ignore_changes = all
   }
 }
+
+resource "databricks_catalog" "segment_storage" {
+  name           = "segment_storage"
+  comment        = "Dedicated catalog for Segment storage destination"
+  isolation_mode = "OPEN"
+
+  properties = {
+    managed_by = "terraform"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
