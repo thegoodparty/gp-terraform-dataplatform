@@ -18,6 +18,9 @@ databricks_workspace_profile = "DEFAULT"
 databricks_account_profile   = "ACCOUNT"
 # databricks_workspace_host  = "https://xxx.cloud.databricks.com"  # Only needed for CI
 
+# S3 bucket for Unity Catalog managed storage (no trailing slash)
+catalog_storage_bucket = "s3://your-databricks-storage-bucket"
+
 # =============================================================================
 # Astronomer (Astro) Configuration
 # =============================================================================
