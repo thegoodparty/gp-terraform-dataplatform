@@ -64,7 +64,7 @@ jobs:
           databricks_workspace_host = "${DATABRICKS_WORKSPACE_HOST}"
           workspace_id              = "${WORKSPACE_ID}"
           astro_organization_id     = "${ASTRO_ORGANIZATION_ID}"
-          astro_contact_emails      = ${ASTRO_CONTACT_EMAILS}
+          astro_contact_emails      = ${ASTRO_CONTACT_EMAILS}  # unquoted: value is a JSON array
           catalog_storage_bucket    = "${CATALOG_STORAGE_BUCKET}"
           EOF
 
