@@ -97,6 +97,12 @@ resource "databricks_grants" "catalog_main" {
     }
   }
 
+  # Segment SP - creates and owns its own schemas for storage destination
+  grant {
+    principal  = databricks_service_principal.segment_storage.application_id
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE"]
+  }
+
   depends_on = [
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
@@ -186,6 +192,30 @@ resource "databricks_grants" "exports_zapier_schema" {
     ]
   }
 
+}
+
+# =============================================================================
+# SQL Warehouse Permissions
+# =============================================================================
+
+data "databricks_sql_warehouse" "starter" {
+  name = "Serverless Starter Warehouse"
+}
+
+resource "databricks_permissions" "sql_warehouse_starter" {
+  sql_endpoint_id = data.databricks_sql_warehouse.starter.id
+
+  # Note: admins group has CAN_MANAGE by default (built-in, cannot be modified)
+
+  access_control {
+    group_name       = "users"
+    permission_level = "CAN_USE"
+  }
+
+  access_control {
+    service_principal_name = databricks_service_principal.segment_storage.application_id
+    permission_level       = "CAN_USE"
+  }
 }
 
 # =============================================================================
