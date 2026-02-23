@@ -24,6 +24,10 @@ resource "databricks_catalog" "segment_storage" {
     managed_by = "terraform"
   }
 
+  depends_on = [
+    databricks_grants.external_location_storage
+  ]
+
   lifecycle {
     prevent_destroy = true
   }
