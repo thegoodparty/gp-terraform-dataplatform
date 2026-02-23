@@ -32,6 +32,12 @@ variable "databricks_account_profile" {
   default     = null
 }
 
+# S3 bucket for Unity Catalog managed storage
+variable "catalog_storage_bucket" {
+  description = "S3 bucket URL for Unity Catalog managed storage (e.g., s3://my-bucket)"
+  type        = string
+}
+
 # =============================================================================
 # Astronomer (Astro) Variables
 # =============================================================================
