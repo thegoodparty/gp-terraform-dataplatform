@@ -101,7 +101,7 @@ resource "databricks_grants" "catalog_segment_storage" {
 
   grant {
     principal  = databricks_service_principal.segment_storage.application_id
-    privileges = ["ALL_PRIVILEGES"]
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE"]
   }
 }
 
