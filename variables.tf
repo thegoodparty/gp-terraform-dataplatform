@@ -32,6 +32,17 @@ variable "databricks_account_profile" {
   default     = null
 }
 
+# S3 bucket for Unity Catalog managed storage
+variable "catalog_storage_bucket" {
+  description = "S3 bucket URL for Unity Catalog managed storage (e.g., s3://my-bucket)"
+  type        = string
+
+  validation {
+    condition     = can(regex("^s3://[^/]+[^/]$", var.catalog_storage_bucket))
+    error_message = "Must be an S3 bucket URL without trailing slash (e.g., s3://my-bucket)"
+  }
+}
+
 # =============================================================================
 # Astronomer (Astro) Variables
 # =============================================================================

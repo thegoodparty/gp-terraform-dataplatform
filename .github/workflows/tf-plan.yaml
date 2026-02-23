@@ -51,6 +51,7 @@ jobs:
           WORKSPACE_ID: ${{ vars.DATABRICKS_WORKSPACE_ID }}
           ASTRO_ORGANIZATION_ID: ${{ vars.ASTRO_ORGANIZATION_ID }}
           ASTRO_CONTACT_EMAILS: ${{ vars.ASTRO_CONTACT_EMAILS }}
+          CATALOG_STORAGE_BUCKET: ${{ vars.CATALOG_STORAGE_BUCKET }}
         run: |
           # ASTRO_CONTACT_EMAILS should be a JSON array: ["email1", "email2"]
           if [ -z "$ASTRO_CONTACT_EMAILS" ] || [ "$ASTRO_CONTACT_EMAILS" = "[]" ]; then
@@ -63,7 +64,8 @@ jobs:
           databricks_workspace_host = "${DATABRICKS_WORKSPACE_HOST}"
           workspace_id              = "${WORKSPACE_ID}"
           astro_organization_id     = "${ASTRO_ORGANIZATION_ID}"
-          astro_contact_emails      = ${ASTRO_CONTACT_EMAILS}
+          astro_contact_emails      = ${ASTRO_CONTACT_EMAILS}  # unquoted: value is a JSON array
+          catalog_storage_bucket    = "${CATALOG_STORAGE_BUCKET}"
           EOF
 
       - name: Terraform Init
