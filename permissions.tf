@@ -90,16 +90,19 @@ resource "databricks_grants" "catalog_main" {
     }
   }
 
-  # Segment SP - creates and owns its own schemas for storage destination
-  grant {
-    principal  = databricks_service_principal.segment_storage.application_id
-    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE"]
-  }
-
   depends_on = [
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
   ]
+}
+
+resource "databricks_grants" "catalog_segment_storage" {
+  catalog = databricks_catalog.segment_storage.name
+
+  grant {
+    principal  = databricks_service_principal.segment_storage.application_id
+    privileges = ["ALL_PRIVILEGES"]
+  }
 }
 
 # Mart schema permissions - each reader group and dbt-developers get read access
