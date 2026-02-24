@@ -127,6 +127,21 @@ resource "databricks_grants" "catalog_segment_storage" {
     principal  = databricks_service_principal.segment_storage.application_id
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE"]
   }
+
+  grant {
+    principal  = data.databricks_service_principal.dbt_cloud.application_id
+    privileges = ["EXECUTE", "READ_VOLUME", "SELECT", "USE_CATALOG", "USE_SCHEMA"]
+  }
+
+  grant {
+    principal  = databricks_service_principal.dbt_cloud_staging.application_id
+    privileges = ["EXECUTE", "READ_VOLUME", "SELECT", "USE_CATALOG", "USE_SCHEMA"]
+  }
+
+  grant {
+    principal  = data.databricks_group.data_engineers.display_name
+    privileges = ["EXECUTE", "READ_VOLUME", "SELECT", "USE_CATALOG", "USE_SCHEMA"]
+  }
 }
 
 # Mart schema permissions - each reader group and dbt-developers get read access
