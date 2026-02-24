@@ -317,6 +317,16 @@ resource "databricks_permissions" "token_usage" {
 }
 
 # =============================================================================
+# Secret Scope Permissions
+# =============================================================================
+
+resource "databricks_secret_acl" "dbt_cloud_staging_secrets_dev" {
+  principal  = databricks_service_principal.dbt_cloud_staging.application_id
+  permission = "READ"
+  scope      = "dbt-secrets-dev"
+}
+
+# =============================================================================
 # dbt Cloud Staging Schema Permissions
 # =============================================================================
 
