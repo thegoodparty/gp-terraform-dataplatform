@@ -2,18 +2,13 @@
 # Unity Catalog Managed Volumes
 # =============================================================================
 
-# Existing prod volume — imported via import block
-import {
-  to = databricks_volume.dbt_object_storage
-  id = "goodparty_data_catalog.dbt.object_storage"
-}
-
+# Existing prod volume — imported into state
 resource "databricks_volume" "dbt_object_storage" {
   name             = "object_storage"
   catalog_name     = databricks_catalog.main.name
   schema_name      = "dbt"
   volume_type      = "MANAGED"
-  comment          = "Object storage volume for dbt prod environment"
+  owner            = data.databricks_service_principal.dbt_cloud.application_id
 
   lifecycle {
     prevent_destroy = true
