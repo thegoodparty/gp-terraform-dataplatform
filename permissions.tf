@@ -103,6 +103,23 @@ resource "databricks_grants" "catalog_main" {
   ]
 }
 
+# =============================================================================
+# External Location Permissions
+# =============================================================================
+
+data "databricks_external_location" "storage" {
+  name = "db_s3_external_databricks-s3-ingest-dbca4"
+}
+
+resource "databricks_grants" "external_location_storage" {
+  external_location = data.databricks_external_location.storage.id
+
+  grant {
+    principal  = data.databricks_service_principal.github_action.application_id
+    privileges = ["CREATE_MANAGED_STORAGE"]
+  }
+}
+
 resource "databricks_grants" "catalog_segment_storage" {
   catalog = databricks_catalog.segment_storage.name
 
@@ -297,6 +314,16 @@ resource "databricks_permissions" "token_usage" {
     permission_level = "CAN_USE"
   }
 
+}
+
+# =============================================================================
+# Secret Scope Permissions
+# =============================================================================
+
+resource "databricks_secret_acl" "dbt_cloud_staging_secrets_dev" {
+  principal  = databricks_service_principal.dbt_cloud_staging.application_id
+  permission = "READ"
+  scope      = "dbt-secrets-dev"
 }
 
 # =============================================================================
