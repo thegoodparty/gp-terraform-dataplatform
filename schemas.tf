@@ -35,6 +35,24 @@ resource "databricks_schema" "dbt_staging" {
   depends_on = [databricks_grants.catalog_main]
 }
 
+# dbt Cloud staging source schema for L2 and other source data loads
+resource "databricks_schema" "dbt_staging_source" {
+  catalog_name = databricks_catalog.main.name
+  name         = "dbt_staging_source"
+  comment      = "Source schema for dbt Cloud staging environment"
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "dbt_staging_source"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [databricks_grants.catalog_main]
+}
+
 # Dynamic mart schemas from YAML configuration
 resource "databricks_schema" "marts" {
   for_each = local.marts_map

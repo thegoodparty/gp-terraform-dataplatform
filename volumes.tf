@@ -2,8 +2,12 @@
 # Unity Catalog Managed Volumes
 # =============================================================================
 
-# Existing prod volume — import with:
-#   terraform import databricks_volume.dbt_object_storage goodparty_data_catalog.dbt.object_storage
+# Existing prod volume — imported via import block
+import {
+  to = databricks_volume.dbt_object_storage
+  id = "goodparty_data_catalog.dbt.object_storage"
+}
+
 resource "databricks_volume" "dbt_object_storage" {
   name             = "object_storage"
   catalog_name     = databricks_catalog.main.name
@@ -36,9 +40,7 @@ resource "databricks_volume" "dbt_staging_object_storage" {
 # Volume Grants
 # =============================================================================
 
-# Grants on prod dbt.object_storage volume
-# Import with:
-#   terraform import databricks_grants.dbt_object_storage_volume goodparty_data_catalog.dbt.object_storage
+# Grants on prod dbt.object_storage volume (no existing direct grants to import)
 resource "databricks_grants" "dbt_object_storage_volume" {
   volume = databricks_volume.dbt_object_storage.id
 

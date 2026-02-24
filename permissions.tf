@@ -358,6 +358,19 @@ resource "databricks_grants" "dbt_staging_schema" {
   }
 }
 
+resource "databricks_grants" "dbt_staging_source_schema" {
+  schema = databricks_schema.dbt_staging_source.id
+
+  grant {
+    principal = databricks_service_principal.dbt_cloud_staging.application_id
+    privileges = [
+      "USE_SCHEMA",
+      "CREATE_TABLE",
+      "MODIFY"
+    ]
+  }
+}
+
 # =============================================================================
 # Table-level Permissions for Airflow expired voter deletions (DATA-1534)
 # =============================================================================
