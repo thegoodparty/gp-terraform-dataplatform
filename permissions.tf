@@ -347,6 +347,24 @@ resource "databricks_secret_acl" "dbt_cloud_staging_secrets_dev" {
 }
 
 # =============================================================================
+# File-level Permissions
+# =============================================================================
+
+resource "databricks_sql_permissions" "select_any_file" {
+  any_file = true
+
+  privilege_assignments {
+    principal  = data.databricks_group.dbt_users.display_name
+    privileges = ["SELECT"]
+  }
+
+  privilege_assignments {
+    principal  = databricks_service_principal.dbt_cloud_staging.application_id
+    privileges = ["SELECT"]
+  }
+}
+
+# =============================================================================
 # dbt Cloud Staging Schema Permissions
 # =============================================================================
 
