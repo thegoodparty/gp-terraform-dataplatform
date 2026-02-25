@@ -342,6 +342,29 @@ resource "databricks_secret_acl" "dbt_cloud_staging_secrets_dev" {
 }
 
 # =============================================================================
+# File-level Permissions
+# =============================================================================
+
+resource "databricks_sql_permissions" "select_any_file" {
+  any_file = true
+
+  privilege_assignments {
+    principal  = data.databricks_group.dbt_users.display_name
+    privileges = ["SELECT"]
+  }
+
+  privilege_assignments {
+    principal  = data.databricks_service_principal.dbt_cloud.application_id
+    privileges = ["SELECT"]
+  }
+
+  privilege_assignments {
+    principal  = databricks_service_principal.dbt_cloud_staging.application_id
+    privileges = ["SELECT"]
+  }
+}
+
+# =============================================================================
 # dbt Cloud Staging Schema Permissions
 # =============================================================================
 
@@ -355,29 +378,5 @@ resource "databricks_grants" "dbt_staging_schema" {
       "CREATE_TABLE",
       "MODIFY"
     ]
-  }
-}
-
-# =============================================================================
-# Table-level Permissions for Airflow expired voter deletions (DATA-1534)
-# =============================================================================
-
-locals {
-  airflow_modify_tables = toset([
-    "int__l2_nationwide_uniform",
-    "m_people_api__voter",
-  ])
-}
-
-resource "databricks_grants" "airflow_voter_tables" {
-  for_each = local.airflow_modify_tables
-  table    = "${databricks_catalog.main.name}.dbt.${each.value}"
-
-  dynamic "grant" {
-    for_each = databricks_service_principal.airflow
-    content {
-      principal  = grant.value.application_id
-      privileges = ["MODIFY"]
-    }
   }
 }
