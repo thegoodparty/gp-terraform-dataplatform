@@ -118,6 +118,11 @@ resource "databricks_grants" "external_location_storage" {
     principal  = data.databricks_service_principal.github_action.application_id
     privileges = ["CREATE_MANAGED_STORAGE"]
   }
+
+  grant {
+    principal  = databricks_service_principal.dbt_cloud_staging.application_id
+    privileges = ["READ_FILES"]
+  }
 }
 
 resource "databricks_grants" "catalog_segment_storage" {
