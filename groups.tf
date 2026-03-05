@@ -98,8 +98,33 @@ resource "databricks_group" "dbt_developers_account" {
   }
 }
 
+# Genie Civics Beta group - members added manually in console
+resource "databricks_group" "grp_genie_civics_beta" {
+  provider     = databricks.account
+  display_name = "grp_genie_civics_beta"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# Add grp_genie_civics_beta as a member of mart_civics_readers
+resource "databricks_group_member" "genie_civics_beta_in_mart_civics_readers" {
+  provider  = databricks.account
+  group_id  = databricks_group.mart_readers_account["civics"].id
+  member_id = databricks_group.grp_genie_civics_beta.id
+}
+
 # Assign account groups to workspace
 # This makes the account-level groups visible and usable within the workspace
+
+# Assign grp_genie_civics_beta to workspace
+resource "databricks_mws_permission_assignment" "grp_genie_civics_beta" {
+  provider     = databricks.account
+  workspace_id = var.workspace_id
+  principal_id = databricks_group.grp_genie_civics_beta.id
+  permissions  = ["USER"]
+}
 
 # Assign mart reader groups to workspace
 resource "databricks_mws_permission_assignment" "mart_readers" {
