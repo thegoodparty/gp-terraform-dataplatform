@@ -109,7 +109,7 @@ resource "databricks_group" "genie_civics" {
 }
 
 # Add genie_civics as a member of mart_civics_readers
-resource "databricks_group_member" "genie_civics_beta_in_mart_civics_readers" {
+resource "databricks_group_member" "genie_civics_in_mart_civics_readers" {
   provider  = databricks.account
   group_id  = databricks_group.mart_readers_account["civics"].id
   member_id = databricks_group.genie_civics.id
