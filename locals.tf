@@ -4,6 +4,11 @@ locals {
 
   marts_map = { for mart in local.marts : mart.name => mart }
 
+  # Override reader group privileges for specific marts (default: USE_SCHEMA + SELECT)
+  mart_reader_privileges = {
+    mban2026 = ["USE_SCHEMA", "CREATE_MODEL"]
+  }
+
   # Astro deployment environments
   # Both dev and prod Airflow environments live in our single infrastructure
   astro_environments = {
