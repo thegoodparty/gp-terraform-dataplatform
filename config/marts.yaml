@@ -4,4 +4,9 @@ marts:
 
   - name: mban2026
     description: "Mart for DEID voter data for 2026 MBAN students"
+    reader_extra_privileges:
+      - CREATE_MODEL
+
+  - name: analytics
+    description: "Analytics mart for cross-domain business metrics and reporting"
 

@@ -152,10 +152,10 @@ resource "databricks_grants" "mart_schemas" {
 
   grant {
     principal = databricks_group.mart_readers_account[each.key].display_name
-    privileges = [
-      "USE_SCHEMA",
-      "SELECT"
-    ]
+    privileges = concat(
+      ["USE_SCHEMA", "SELECT"],
+      try(each.value.reader_extra_privileges, [])
+    )
   }
 
   grant {
