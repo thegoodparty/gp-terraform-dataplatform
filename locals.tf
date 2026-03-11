@@ -6,7 +6,7 @@ locals {
 
   # Override reader group privileges for specific marts (default: USE_SCHEMA + SELECT)
   mart_reader_privileges = {
-    mban2026 = ["USE_SCHEMA", "CREATE_MODEL"]
+    mban2026 = ["USE_SCHEMA", "SELECT", "CREATE_MODEL"]
   }
 
   # Astro deployment environments
