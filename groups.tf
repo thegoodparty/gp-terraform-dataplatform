@@ -34,7 +34,7 @@ data "databricks_service_principal" "looker_studio" {
 
 data "databricks_service_principal" "genie_slack_bot" {
   provider       = databricks.account
-  application_id = "fd8d8e25-0327-40bd-8199-0c5788dafd00"
+  application_id = "app-2mjyej gp-genie-slack-bot"
 }
 
 # Data sources for existing groups (managed outside Terraform)
