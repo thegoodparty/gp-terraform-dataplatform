@@ -31,6 +31,12 @@ data "databricks_service_principal" "looker_studio" {
   provider     = databricks.account
   display_name = "looker-studio"
 }
+
+data "databricks_service_principal" "genie_slack_bot" {
+  provider       = databricks.account
+  application_id = "fd8d8e25-0327-40bd-8199-0c5788dafd00"
+}
+
 # Data sources for existing groups (managed outside Terraform)
 data "databricks_group" "account_users" {
   provider     = databricks.account
@@ -113,6 +119,16 @@ resource "databricks_group_member" "genie_civics_in_mart_civics_readers" {
   provider  = databricks.account
   group_id  = databricks_group.mart_readers_account["civics"].id
   member_id = databricks_group.genie_civics.id
+}
+
+# Add genie-slack-bot SP to genie_civics group
+# Inherits: USE_CATALOG (via mart_civics_readers → catalog_main),
+#           USE_SCHEMA + SELECT (via mart_civics_readers → mart_schemas)
+# SQL warehouse CAN_USE is granted separately in permissions.tf
+resource "databricks_group_member" "genie_slack_bot_in_genie_civics" {
+  provider  = databricks.account
+  group_id  = databricks_group.genie_civics.id
+  member_id = data.databricks_service_principal.genie_slack_bot.id
 }
 
 # Assign account groups to workspace
