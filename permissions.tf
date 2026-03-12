@@ -206,25 +206,6 @@ resource "databricks_grants" "models_mban_schema" {
       "CREATE_MODEL"
     ]
   }
-
-  # dbt_cloud service principal gets write access
-  grant {
-    principal = data.databricks_service_principal.dbt_cloud.application_id
-    privileges = [
-      "USE_SCHEMA",
-      "CREATE_TABLE",
-      "MODIFY"
-    ]
-  }
-
-  # github-action service principal for CI/CD (read-only)
-  grant {
-    principal = data.databricks_service_principal.github_action.application_id
-    privileges = [
-      "USE_SCHEMA",
-      "SELECT"
-    ]
-  }
 }
 
 # Zapier exports schema permissions
