@@ -5,3 +5,6 @@ marts:
   - name: mban2026
     description: "Mart for DEID voter data for 2026 MBAN students"
 
+  - name: analytics
+    description: "Analytics mart for cross-domain business metrics and reporting"
+

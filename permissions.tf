@@ -193,6 +193,23 @@ resource "databricks_grants" "mart_schemas" {
   ]
 }
 
+# MBAN models schema permissions
+resource "databricks_grants" "models_mban_schema" {
+  schema = databricks_schema.models_mban.id
+
+  # MBAN readers group can create and manage ML models
+  grant {
+    principal = databricks_group.mart_readers_account["mban2026"].display_name
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT",
+      "CREATE_TABLE",
+      "MODIFY",
+      "CREATE_MODEL"
+    ]
+  }
+}
+
 # Zapier exports schema permissions
 resource "databricks_grants" "exports_zapier_schema" {
   schema = databricks_schema.exports_zapier.id

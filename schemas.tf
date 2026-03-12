@@ -35,6 +35,24 @@ resource "databricks_schema" "dbt_staging" {
   depends_on = [databricks_grants.catalog_main]
 }
 
+# MBAN models schema for ML model storage and ad hoc objects
+resource "databricks_schema" "models_mban" {
+  catalog_name = databricks_catalog.main.name
+  name         = "models_mban"
+  comment      = "Schema for MBAN team ML models and predictions"
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "models"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [databricks_grants.catalog_main]
+}
+
 # Dynamic mart schemas from YAML configuration
 resource "databricks_schema" "marts" {
   for_each = local.marts_map
