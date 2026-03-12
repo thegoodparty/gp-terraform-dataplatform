@@ -203,6 +203,8 @@ resource "databricks_grants" "models_mban_schema" {
     privileges = [
       "USE_SCHEMA",
       "SELECT",
+      "CREATE_TABLE",
+      "MODIFY",
       "CREATE_MODEL"
     ]
   }
