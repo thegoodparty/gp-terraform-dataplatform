@@ -152,7 +152,10 @@ resource "databricks_grants" "mart_schemas" {
 
   grant {
     principal = databricks_group.mart_readers_account[each.key].display_name
-    privileges = lookup(local.mart_reader_privileges, each.key, ["USE_SCHEMA", "SELECT"])
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT"
+    ]
   }
 
   grant {
@@ -188,6 +191,40 @@ resource "databricks_grants" "mart_schemas" {
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
   ]
+}
+
+# MBAN models schema permissions
+resource "databricks_grants" "models_mban_schema" {
+  schema = databricks_schema.models_mban.id
+
+  # MBAN readers group can create and manage ML models
+  grant {
+    principal = databricks_group.mart_readers_account["mban2026"].display_name
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT",
+      "CREATE_MODEL"
+    ]
+  }
+
+  # dbt_cloud service principal gets write access
+  grant {
+    principal = data.databricks_service_principal.dbt_cloud.application_id
+    privileges = [
+      "USE_SCHEMA",
+      "CREATE_TABLE",
+      "MODIFY"
+    ]
+  }
+
+  # github-action service principal for CI/CD (read-only)
+  grant {
+    principal = data.databricks_service_principal.github_action.application_id
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT"
+    ]
+  }
 }
 
 # Zapier exports schema permissions
