@@ -1,6 +1,11 @@
 # Account-level groups for Unity Catalog
 # These groups must be created at the account level to grant Unity Catalog permissions
 
+# Workspace-level app lookup for Genie Slack Bot
+data "databricks_app" "genie_slack_bot" {
+  name = "gp-genie-slack-bot"
+}
+
 # Data sources for service principals (managed outside Terraform)
 data "databricks_service_principal" "dbt_cloud" {
   provider     = databricks.account
@@ -32,9 +37,10 @@ data "databricks_service_principal" "looker_studio" {
   display_name = "looker-studio"
 }
 
+# Resolve the account-level SP from the workspace app rather than hard-coding its client ID.
 data "databricks_service_principal" "genie_slack_bot" {
   provider       = databricks.account
-  application_id = "fd8d8e25-0327-40bd-8199-0c5788dafd00"
+  application_id = data.databricks_app.genie_slack_bot.app.service_principal_client_id
 }
 
 # Data sources for existing groups (managed outside Terraform)

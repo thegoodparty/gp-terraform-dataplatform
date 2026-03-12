@@ -268,11 +268,6 @@ resource "databricks_permissions" "sql_warehouse_starter" {
     service_principal_name = databricks_service_principal.segment_storage.application_id
     permission_level       = "CAN_USE"
   }
-
-  access_control {
-    service_principal_name = data.databricks_service_principal.genie_slack_bot.application_id
-    permission_level       = "CAN_USE"
-  }
 }
 
 # =============================================================================
