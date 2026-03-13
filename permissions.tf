@@ -144,6 +144,31 @@ resource "databricks_grants" "catalog_segment_storage" {
   }
 }
 
+# =============================================================================
+# System Tables Permissions
+# =============================================================================
+
+resource "databricks_grant" "system_catalog_data_engineers" {
+  catalog = "system"
+
+  principal  = data.databricks_group.data_engineers.display_name
+  privileges = ["USE_CATALOG"]
+}
+
+resource "databricks_grant" "system_access_schema_data_engineers" {
+  schema = "system.access"
+
+  principal  = data.databricks_group.data_engineers.display_name
+  privileges = ["USE_SCHEMA"]
+}
+
+resource "databricks_grant" "system_access_audit_data_engineers" {
+  table = "system.access.audit"
+
+  principal  = data.databricks_group.data_engineers.display_name
+  privileges = ["SELECT"]
+}
+
 # Mart schema permissions - each reader group and dbt-developers get read access
 resource "databricks_grants" "mart_schemas" {
   for_each = local.marts_map
