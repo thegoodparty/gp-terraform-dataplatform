@@ -118,6 +118,11 @@ resource "databricks_grants" "external_location_storage" {
     principal  = data.databricks_service_principal.github_action.application_id
     privileges = ["CREATE_MANAGED_STORAGE"]
   }
+
+  grant {
+    principal  = "dan@goodparty.org"
+    privileges = ["READ_FILES", "WRITE_FILES"]
+  }
 }
 
 resource "databricks_grants" "catalog_segment_storage" {
@@ -230,7 +235,8 @@ resource "databricks_grants" "models_mban_schema" {
       "SELECT",
       "CREATE_TABLE",
       "MODIFY",
-      "CREATE_MODEL"
+      "CREATE_MODEL",
+      "EXECUTE"
     ]
   }
 }
@@ -308,6 +314,8 @@ resource "databricks_permissions" "sql_warehouse_sigma_pov" {
     service_principal_name = databricks_service_principal.sigma.application_id
     permission_level       = "CAN_USE"
   }
+
+  depends_on = [databricks_mws_permission_assignment.sigma]
 }
 
 # =============================================================================
@@ -433,7 +441,16 @@ resource "databricks_grants" "dbt_staging_schema" {
     privileges = [
       "USE_SCHEMA",
       "CREATE_TABLE",
-      "MODIFY"
+      "MODIFY",
+      "CREATE_FUNCTION"
+    ]
+  }
+
+  grant {
+    principal = data.databricks_group.data_engineers.display_name
+    privileges = [
+      "USE_SCHEMA",
+      "EXECUTE"
     ]
   }
 }
