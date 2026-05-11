@@ -130,11 +130,26 @@ resource "databricks_group_member" "genie_civics_in_mart_civics_readers" {
 # Add genie-slack-bot SP to genie_civics group
 # Inherits: USE_CATALOG (via mart_civics_readers → catalog_main),
 #           USE_SCHEMA + SELECT (via mart_civics_readers → mart_schemas)
-# SQL warehouse CAN_USE is granted separately in permissions.tf
 resource "databricks_group_member" "genie_slack_bot_in_genie_civics" {
   provider  = databricks.account
   group_id  = databricks_group.genie_civics.id
   member_id = data.databricks_service_principal.genie_slack_bot.id
+}
+
+# Add sigma SP to mart reader groups for the POV test cases.
+# Inherits: USE_CATALOG (via catalog_main),
+#           USE_SCHEMA + SELECT (via mart_schemas)
+# SQL warehouse CAN_USE on wh-sigma-pov is granted in permissions.tf.
+resource "databricks_group_member" "sigma_in_mart_civics_readers" {
+  provider  = databricks.account
+  group_id  = databricks_group.mart_readers_account["civics"].id
+  member_id = databricks_service_principal.sigma.id
+}
+
+resource "databricks_group_member" "sigma_in_mart_analytics_readers" {
+  provider  = databricks.account
+  group_id  = databricks_group.mart_readers_account["analytics"].id
+  member_id = databricks_service_principal.sigma.id
 }
 
 # Assign account groups to workspace

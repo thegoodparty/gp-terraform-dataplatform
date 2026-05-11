@@ -56,3 +56,22 @@ resource "databricks_mws_permission_assignment" "segment_storage" {
   principal_id = databricks_service_principal.segment_storage.id
   permissions  = ["USER"]
 }
+
+# Sigma Computing service principal for the BI POV.
+# Mart access via group membership in groups.tf;
+# dedicated wh-sigma-pov warehouse grant in permissions.tf.
+resource "databricks_service_principal" "sigma" {
+  provider     = databricks.account
+  display_name = "sigma"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "databricks_mws_permission_assignment" "sigma" {
+  provider     = databricks.account
+  workspace_id = var.workspace_id
+  principal_id = databricks_service_principal.sigma.id
+  permissions  = ["USER"]
+}

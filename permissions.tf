@@ -295,6 +295,21 @@ resource "databricks_permissions" "sql_warehouse_starter" {
   }
 }
 
+# Dedicated SQL warehouse for the Sigma Computing POV.
+# Warehouse provisioned via UI; TF manages permissions only.
+data "databricks_sql_warehouse" "sigma_pov" {
+  name = "wh-sigma-pov"
+}
+
+resource "databricks_permissions" "sql_warehouse_sigma_pov" {
+  sql_endpoint_id = data.databricks_sql_warehouse.sigma_pov.id
+
+  access_control {
+    service_principal_name = databricks_service_principal.sigma.application_id
+    permission_level       = "CAN_USE"
+  }
+}
+
 # =============================================================================
 # Compute Cluster Permissions
 # =============================================================================
