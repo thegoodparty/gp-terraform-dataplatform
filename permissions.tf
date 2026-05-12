@@ -120,7 +120,7 @@ resource "databricks_grants" "external_location_storage" {
   }
 
   grant {
-    principal  = "dan@goodparty.org"
+    principal  = data.databricks_group.data_engineers.display_name
     privileges = ["READ_FILES", "WRITE_FILES"]
   }
 }
@@ -380,6 +380,11 @@ resource "databricks_permissions" "token_usage" {
 
   access_control {
     service_principal_name = databricks_service_principal.dbt_cloud_staging.application_id
+    permission_level       = "CAN_USE"
+  }
+
+  access_control {
+    service_principal_name = databricks_service_principal.sigma.application_id
     permission_level       = "CAN_USE"
   }
 
