@@ -19,3 +19,10 @@ provider "databricks" {
 provider "astro" {
   organization_id = var.astro_organization_id
 }
+
+# AWS provider for IAM/OIDC resources that bridge Astro and AWS.
+# CI assumes vars.AWS_ROLE_ARN via OIDC (see .github/workflows/tf-plan.yaml);
+# locally, this picks up the standard AWS credential chain.
+provider "aws" {
+  region = var.aws_region
+}

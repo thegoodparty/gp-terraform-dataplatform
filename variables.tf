@@ -73,3 +73,18 @@ variable "astro_contact_emails" {
 
 # Note: Astro environment configs (dev/prod) are defined in locals.tf
 # Both Airflow environments live in our single infrastructure
+
+# =============================================================================
+# AWS Variables
+# =============================================================================
+
+variable "aws_region" {
+  description = "AWS region for AWS-provider resources"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "astronomer_oidc_issuer_url" {
+  description = "OIDC issuer URL for the underlying EKS cluster hosting Astro Airflow deployments. Format: https://oidc.eks.<region>.amazonaws.com/id/<cluster-id>. Obtain from Astronomer support or the Astro UI."
+  type        = string
+}

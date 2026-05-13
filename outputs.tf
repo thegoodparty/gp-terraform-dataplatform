@@ -56,3 +56,12 @@ output "astro_deployments" {
   }
 }
 
+# =============================================================================
+# AWS Outputs
+# =============================================================================
+
+output "astronomer_oidc_provider_arn" {
+  description = "ARN of the Astronomer OIDC provider. Use in IAM role trust policies (Federated principal) for roles that Airflow DAGs assume via AssumeRoleWithWebIdentity."
+  value       = aws_iam_openid_connect_provider.astronomer.arn
+}
+

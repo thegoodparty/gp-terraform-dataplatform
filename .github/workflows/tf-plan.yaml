@@ -52,6 +52,7 @@ jobs:
           ASTRO_ORGANIZATION_ID: ${{ vars.ASTRO_ORGANIZATION_ID }}
           ASTRO_CONTACT_EMAILS: ${{ vars.ASTRO_CONTACT_EMAILS }}
           CATALOG_STORAGE_BUCKET: ${{ vars.CATALOG_STORAGE_BUCKET }}
+          ASTRONOMER_OIDC_ISSUER_URL: ${{ vars.ASTRONOMER_OIDC_ISSUER_URL }}
         run: |
           # ASTRO_CONTACT_EMAILS should be a JSON array: ["email1", "email2"]
           if [ -z "$ASTRO_CONTACT_EMAILS" ] || [ "$ASTRO_CONTACT_EMAILS" = "[]" ]; then
@@ -59,13 +60,19 @@ jobs:
             exit 1
           fi
 
+          if [ -z "$ASTRONOMER_OIDC_ISSUER_URL" ]; then
+            echo "::error::ASTRONOMER_OIDC_ISSUER_URL is not configured"
+            exit 1
+          fi
+
           cat > terraform.tfvars << EOF
-          databricks_account_id     = "${DATABRICKS_ACCOUNT_ID}"
-          databricks_workspace_host = "${DATABRICKS_WORKSPACE_HOST}"
-          workspace_id              = "${WORKSPACE_ID}"
-          astro_organization_id     = "${ASTRO_ORGANIZATION_ID}"
-          astro_contact_emails      = ${ASTRO_CONTACT_EMAILS}  # unquoted: value is a JSON array
-          catalog_storage_bucket    = "${CATALOG_STORAGE_BUCKET}"
+          databricks_account_id      = "${DATABRICKS_ACCOUNT_ID}"
+          databricks_workspace_host  = "${DATABRICKS_WORKSPACE_HOST}"
+          workspace_id               = "${WORKSPACE_ID}"
+          astro_organization_id      = "${ASTRO_ORGANIZATION_ID}"
+          astro_contact_emails       = ${ASTRO_CONTACT_EMAILS}  # unquoted: value is a JSON array
+          catalog_storage_bucket     = "${CATALOG_STORAGE_BUCKET}"
+          astronomer_oidc_issuer_url = "${ASTRONOMER_OIDC_ISSUER_URL}"
           EOF
 
       - name: Terraform Init

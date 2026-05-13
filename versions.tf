@@ -18,5 +18,13 @@ terraform {
       source  = "astronomer/astro"
       version = "~> 1.0"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.70"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
 }
