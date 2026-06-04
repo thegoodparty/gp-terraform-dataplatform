@@ -59,6 +59,12 @@ data "databricks_group" "data_users" {
   display_name = "data users"
 }
 
+# Principal for the Machine Learning Compute single-user cluster
+data "databricks_group" "ml_users" {
+  provider     = databricks.account
+  display_name = "ml-users"
+}
+
 data "databricks_group" "ai_owners" {
   provider     = databricks.account
   display_name = "ai-owners"
@@ -85,6 +91,24 @@ resource "databricks_group_member" "airflow_token_users" {
   provider  = databricks.account
   group_id  = data.databricks_group.token_users.id
   member_id = databricks_service_principal.airflow[each.key].id
+}
+
+# The Machine Learning Compute cluster runs as the ml-users principal.
+# Nesting it into data users grants the same read access analysts have,
+# including USE_SCHEMA + SELECT on the dbt schema.
+resource "databricks_group_member" "ml_users_in_data_users" {
+  provider  = databricks.account
+  group_id  = data.databricks_group.data_users.id
+  member_id = data.databricks_group.ml_users.id
+}
+
+# Give all data users read access to the general-purpose marts.
+# mban2026 is excluded (see local.shared_marts).
+resource "databricks_group_member" "data_users_in_mart_readers" {
+  for_each  = local.shared_marts
+  provider  = databricks.account
+  group_id  = databricks_group.mart_readers_account[each.key].id
+  member_id = data.databricks_group.data_users.id
 }
 
 # Dynamic mart reader groups from YAML configuration
