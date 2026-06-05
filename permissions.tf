@@ -241,6 +241,23 @@ resource "databricks_grants" "models_mban_schema" {
   }
 }
 
+# model_predictions schema permissions
+# Uses the singular (non-authoritative) databricks_grant so ml-users' privileges
+# are added without clobbering grants on this schema that are managed elsewhere.
+# Privileges are create-only: register models and add versions, with no MODIFY,
+# CREATE_TABLE, or ownership, so members cannot alter or delete data or drop
+# objects they do not own.
+resource "databricks_grant" "model_predictions_ml_users" {
+  schema = databricks_schema.model_predictions.id
+
+  principal = data.databricks_group.ml_users.display_name
+  privileges = [
+    "USE_SCHEMA",
+    "CREATE_MODEL",
+    "CREATE_MODEL_VERSION"
+  ]
+}
+
 # Zapier exports schema permissions
 resource "databricks_grants" "exports_zapier_schema" {
   schema = databricks_schema.exports_zapier.id

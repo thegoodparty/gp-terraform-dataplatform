@@ -53,6 +53,31 @@ resource "databricks_schema" "models_mban" {
   depends_on = [databricks_grants.catalog_main]
 }
 
+# Model predictions schema for ML model registration and prediction outputs.
+# This schema already exists in the catalog; the import block below brings it
+# under Terraform management without recreating it.
+import {
+  to = databricks_schema.model_predictions
+  id = "goodparty_data_catalog.model_predictions"
+}
+
+resource "databricks_schema" "model_predictions" {
+  catalog_name = databricks_catalog.main.name
+  name         = "model_predictions"
+  comment      = "Schema for ML model registration and prediction outputs"
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "models"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [databricks_grants.catalog_main]
+}
+
 # Dynamic mart schemas from YAML configuration
 resource "databricks_schema" "marts" {
   for_each = local.marts_map
