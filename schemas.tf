@@ -53,7 +53,7 @@ resource "databricks_schema" "models_mban" {
   depends_on = [databricks_grants.catalog_main]
 }
 
-# Adopt the existing model_predictions schema instead of recreating it
+# exising model_predictions schema, now under terraform management
 import {
   to = databricks_schema.model_predictions
   id = "goodparty_data_catalog.model_predictions"

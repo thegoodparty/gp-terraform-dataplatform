@@ -253,7 +253,7 @@ resource "databricks_grant" "model_predictions_ml_users" {
   ]
 }
 
-# Sandbox is throwaway, so ml-users get everything
+# ml-users get everything in sandbox
 resource "databricks_grant" "sandbox_ml_users" {
   schema = "${databricks_catalog.main.name}.sandbox"
 
