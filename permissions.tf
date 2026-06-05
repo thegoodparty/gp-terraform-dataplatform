@@ -241,8 +241,7 @@ resource "databricks_grants" "models_mban_schema" {
   }
 }
 
-# model_predictions schema permissions
-# Singular grant adds ml-users without touching grants managed elsewhere.
+# Singular grant won't clobber grants set outside Terraform
 resource "databricks_grant" "model_predictions_ml_users" {
   schema = databricks_schema.model_predictions.id
 
@@ -254,8 +253,7 @@ resource "databricks_grant" "model_predictions_ml_users" {
   ]
 }
 
-# sandbox schema permissions
-# Sandbox is a throwaway dev environment, so ml-users get full access.
+# Sandbox is throwaway, so ml-users get everything
 resource "databricks_grant" "sandbox_ml_users" {
   schema = "${databricks_catalog.main.name}.sandbox"
 

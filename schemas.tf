@@ -53,8 +53,7 @@ resource "databricks_schema" "models_mban" {
   depends_on = [databricks_grants.catalog_main]
 }
 
-# model_predictions schema for ML models and prediction outputs
-# Schema already exists, so adopt it instead of recreating it.
+# Adopt the existing model_predictions schema instead of recreating it
 import {
   to = databricks_schema.model_predictions
   id = "goodparty_data_catalog.model_predictions"
