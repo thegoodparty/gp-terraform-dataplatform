@@ -52,12 +52,6 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA"]
   }
 
-  # Catalog access for ml-users' model_predictions and sandbox grants
-  grant {
-    principal  = data.databricks_group.ml_users.display_name
-    privileges = ["USE_CATALOG"]
-  }
-
   # ai-owners group gets schema access across entire catalog
   grant {
     principal  = data.databricks_group.ai_owners.display_name
