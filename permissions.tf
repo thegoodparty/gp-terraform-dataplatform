@@ -258,6 +258,20 @@ resource "databricks_grant" "model_predictions_ml_users" {
   ]
 }
 
+# sandbox schema permissions
+# The sandbox is an unstable, full-permissions development environment. Grant
+# ml-users ALL_PRIVILEGES so members can freely create and manage tables,
+# models, volumes, functions, and data there. Uses the singular
+# (non-authoritative) databricks_grant so the existing data users grant is left
+# intact. Note: ALL_PRIVILEGES does not include dropping objects owned by other
+# users; members fully manage what they create.
+resource "databricks_grant" "sandbox_ml_users" {
+  schema = "${databricks_catalog.main.name}.sandbox"
+
+  principal  = data.databricks_group.ml_users.display_name
+  privileges = ["ALL_PRIVILEGES"]
+}
+
 # Zapier exports schema permissions
 resource "databricks_grants" "exports_zapier_schema" {
   schema = databricks_schema.exports_zapier.id
