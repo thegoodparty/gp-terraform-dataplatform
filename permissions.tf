@@ -241,6 +241,26 @@ resource "databricks_grants" "models_mban_schema" {
   }
 }
 
+# Singular grant won't clobber grants set outside Terraform
+resource "databricks_grant" "model_predictions_ml_users" {
+  schema = databricks_schema.model_predictions.id
+
+  principal = data.databricks_group.ml_users.display_name
+  privileges = [
+    "USE_SCHEMA",
+    "CREATE_MODEL",
+    "CREATE_MODEL_VERSION"
+  ]
+}
+
+# ml-users get everything in sandbox
+resource "databricks_grant" "sandbox_ml_users" {
+  schema = "${databricks_catalog.main.name}.sandbox"
+
+  principal  = data.databricks_group.ml_users.display_name
+  privileges = ["ALL_PRIVILEGES"]
+}
+
 # Zapier exports schema permissions
 resource "databricks_grants" "exports_zapier_schema" {
   schema = databricks_schema.exports_zapier.id
