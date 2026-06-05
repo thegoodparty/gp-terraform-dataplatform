@@ -53,9 +53,8 @@ resource "databricks_schema" "models_mban" {
   depends_on = [databricks_grants.catalog_main]
 }
 
-# Model predictions schema for ML model registration and prediction outputs.
-# This schema already exists in the catalog; the import block below brings it
-# under Terraform management without recreating it.
+# model_predictions schema for ML models and prediction outputs
+# Schema already exists, so adopt it instead of recreating it.
 import {
   to = databricks_schema.model_predictions
   id = "goodparty_data_catalog.model_predictions"

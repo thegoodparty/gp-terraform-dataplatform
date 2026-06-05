@@ -242,11 +242,7 @@ resource "databricks_grants" "models_mban_schema" {
 }
 
 # model_predictions schema permissions
-# Uses the singular (non-authoritative) databricks_grant so ml-users' privileges
-# are added without clobbering grants on this schema that are managed elsewhere.
-# Privileges are create-only: register models and add versions, with no MODIFY,
-# CREATE_TABLE, or ownership, so members cannot alter or delete data or drop
-# objects they do not own.
+# Singular grant adds ml-users without touching grants managed elsewhere.
 resource "databricks_grant" "model_predictions_ml_users" {
   schema = databricks_schema.model_predictions.id
 
@@ -259,12 +255,7 @@ resource "databricks_grant" "model_predictions_ml_users" {
 }
 
 # sandbox schema permissions
-# The sandbox is an unstable, full-permissions development environment. Grant
-# ml-users ALL_PRIVILEGES so members can freely create and manage tables,
-# models, volumes, functions, and data there. Uses the singular
-# (non-authoritative) databricks_grant so the existing data users grant is left
-# intact. Note: ALL_PRIVILEGES does not include dropping objects owned by other
-# users; members fully manage what they create.
+# Sandbox is a throwaway dev environment, so ml-users get full access.
 resource "databricks_grant" "sandbox_ml_users" {
   schema = "${databricks_catalog.main.name}.sandbox"
 
