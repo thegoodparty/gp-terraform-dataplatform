@@ -176,6 +176,12 @@ resource "databricks_group_member" "sigma_in_mart_analytics_readers" {
   member_id = databricks_service_principal.sigma.id
 }
 
+resource "databricks_group_member" "icp_finder_in_mart_civics_readers" {
+  provider  = databricks.account
+  group_id  = databricks_group.mart_readers_account["civics"].id
+  member_id = databricks_service_principal.icp_finder.id
+}
+
 # Assign account groups to workspace
 # This makes the account-level groups visible and usable within the workspace
 

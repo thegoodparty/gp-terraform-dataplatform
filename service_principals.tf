@@ -75,3 +75,19 @@ resource "databricks_mws_permission_assignment" "sigma" {
   principal_id = databricks_service_principal.sigma.id
   permissions  = ["USER"]
 }
+
+resource "databricks_service_principal" "icp_finder" {
+  provider     = databricks.account
+  display_name = "icp-finder"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "databricks_mws_permission_assignment" "icp_finder" {
+  provider     = databricks.account
+  workspace_id = var.workspace_id
+  principal_id = databricks_service_principal.icp_finder.id
+  permissions  = ["USER"]
+}
