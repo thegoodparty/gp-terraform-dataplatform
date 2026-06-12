@@ -295,6 +295,15 @@ resource "databricks_grants" "exports_zapier_schema" {
     ]
   }
 
+  # data users get read-only access so analysts can inspect what we export
+  grant {
+    principal = data.databricks_group.data_users.display_name
+    privileges = [
+      "USE_SCHEMA",
+      "SELECT"
+    ]
+  }
+
 }
 
 # =============================================================================
