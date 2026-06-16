@@ -16,7 +16,7 @@ locals {
       name                    = "astro-dev"
       description             = "Development Airflow environment"
       type                    = "STANDARD"
-      executor                = "KUBERNETES"
+      executor                = "ASTRO"
       is_cicd_enforced        = false
       is_dag_deploy_enabled   = true
       is_development_mode     = true
@@ -26,6 +26,16 @@ locals {
       resource_quota_cpu      = "10"
       resource_quota_memory   = "20Gi"
       scheduler_size          = "SMALL"
+      worker_queues = [
+        {
+          name               = "default"
+          is_default         = true
+          astro_machine      = "A5"
+          min_worker_count   = 0
+          max_worker_count   = 10
+          worker_concurrency = 5
+        }
+      ]
       hibernation_schedules = [
         {
           hibernate_at_cron = "0 1 * * 2,3,4,5,6"
@@ -39,7 +49,7 @@ locals {
       name                    = "astro-prod"
       description             = "Production Airflow environment"
       type                    = "STANDARD"
-      executor                = "KUBERNETES"
+      executor                = "ASTRO"
       is_cicd_enforced        = false
       is_dag_deploy_enabled   = true
       is_development_mode     = false
@@ -49,6 +59,16 @@ locals {
       resource_quota_cpu      = "10"
       resource_quota_memory   = "20Gi"
       scheduler_size          = "SMALL"
+      worker_queues = [
+        {
+          name               = "default"
+          is_default         = true
+          astro_machine      = "A5"
+          min_worker_count   = 0
+          max_worker_count   = 10
+          worker_concurrency = 5
+        }
+      ]
       hibernation_schedules   = []
     }
   }

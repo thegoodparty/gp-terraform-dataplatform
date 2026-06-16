@@ -41,6 +41,7 @@ resource "astro_deployment" "environments" {
   resource_quota_memory   = each.value.resource_quota_memory
   default_task_pod_cpu    = each.value.default_task_pod_cpu
   default_task_pod_memory = each.value.default_task_pod_memory
+  worker_queues           = each.value.worker_queues
 
   environment_variables = [
     {
