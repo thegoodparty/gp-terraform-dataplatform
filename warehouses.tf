@@ -4,7 +4,7 @@ resource "databricks_sql_endpoint" "agent" {
   name                      = each.value.warehouse_name
   cluster_size              = "Small"
   enable_serverless_compute = true
-  warehouse_type            = "PRO"
+  warehouse_type            = "PRO" # required for serverless warehouses; there is no SERVERLESS type
   auto_stop_mins            = 10
   max_num_clusters          = 1
 
