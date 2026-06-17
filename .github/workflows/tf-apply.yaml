@@ -3,6 +3,13 @@ name: Terraform Apply
 on:
   workflow_call:
 
+# Shares the terraform-state group with the plan workflow so plans and applies
+# never run concurrently against the single shared state. Applies are never
+# cancelled mid-run, which would risk an orphaned lock or partial apply.
+concurrency:
+  group: terraform-state
+  cancel-in-progress: false
+
 env:
   TF_VERSION: '1.14.4'
 
@@ -48,4 +55,4 @@ jobs:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -lock-timeout=5m -auto-approve tfplan

@@ -13,6 +13,12 @@ on:
         description: 'Number of resources to replace'
         value: ${{ jobs.plan.outputs.replaces }}
 
+# Serialize all operations against the single shared state lock. Never cancel an
+# in-progress run, so terraform always releases its lock before the next starts.
+concurrency:
+  group: terraform-state
+  cancel-in-progress: false
+
 env:
   TF_VERSION: '1.14.4'
 
@@ -80,7 +86,7 @@ jobs:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
-        run: terraform plan -out=tfplan
+        run: terraform plan -lock-timeout=5m -out=tfplan
 
       - name: Analyze Plan
         id: analyze
