@@ -30,6 +30,29 @@ output "dbt_developers_group" {
 }
 
 # =============================================================================
+# Product Agent Outputs
+# =============================================================================
+
+output "agent_service_principals" {
+  description = "Application IDs of the product agent service principals"
+  value = {
+    for key, sp in databricks_service_principal.agent :
+    key => sp.application_id
+  }
+}
+
+output "agent_warehouses" {
+  description = "Names and IDs of the product agent SQL warehouses"
+  value = {
+    for key, wh in databricks_sql_endpoint.agent :
+    key => {
+      name = wh.name
+      id   = wh.id
+    }
+  }
+}
+
+# =============================================================================
 # Astronomer (Astro) Outputs
 # =============================================================================
 

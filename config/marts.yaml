@@ -8,3 +8,9 @@ marts:
   - name: analytics
     description: "Analytics mart for cross-domain business metrics and reporting"
 
+  - name: serve_agents
+    description: "Curated mart of approved data for Serve product AI agents"
+
+  - name: win_agents
+    description: "Curated mart of approved data for Win product AI agents"
+
