@@ -182,6 +182,14 @@ resource "databricks_group_member" "icp_finder_in_mart_civics_readers" {
   member_id = databricks_service_principal.icp_finder.id
 }
 
+# Each product agent SP reads only its own mart, via that mart's reader group.
+resource "databricks_group_member" "agent_in_mart_readers" {
+  for_each  = local.agent_products
+  provider  = databricks.account
+  group_id  = databricks_group.mart_readers_account[each.value.mart].id
+  member_id = databricks_service_principal.agent[each.key].id
+}
+
 # Assign account groups to workspace
 # This makes the account-level groups visible and usable within the workspace
 

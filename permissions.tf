@@ -347,6 +347,19 @@ resource "databricks_permissions" "sql_warehouse_sigma_pov" {
   depends_on = [databricks_mws_permission_assignment.sigma]
 }
 
+# CAN_USE on each product agent warehouse for its matching SP.
+resource "databricks_permissions" "agent_warehouse" {
+  for_each        = local.agent_products
+  sql_endpoint_id = databricks_sql_endpoint.agent[each.key].id
+
+  access_control {
+    service_principal_name = databricks_service_principal.agent[each.key].application_id
+    permission_level       = "CAN_USE"
+  }
+
+  depends_on = [databricks_mws_permission_assignment.agent]
+}
+
 # =============================================================================
 # Compute Cluster Permissions
 # =============================================================================

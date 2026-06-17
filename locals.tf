@@ -4,6 +4,20 @@ locals {
 
   marts_map = { for mart in local.marts : mart.name => mart }
 
+  # Win and Serve product agents: mart, service principal, and warehouse (TDD DATA-1977).
+  agent_products = {
+    serve = {
+      mart           = "serve_agents"
+      sp_name        = "sp_serve_agent"
+      warehouse_name = "wh-serve-agents"
+    }
+    win = {
+      mart           = "win_agents"
+      sp_name        = "sp_win_agent"
+      warehouse_name = "wh-win-agents"
+    }
+  }
+
   # Marts that all data users should be able to read.
   # mban2026 is excluded: its reader group also grants write + CREATE_MODEL on
   # the models_mban schema, and it holds DEID voter data scoped to a cohort.
