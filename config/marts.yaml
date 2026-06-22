@@ -14,3 +14,6 @@ marts:
   - name: win_agents
     description: "Curated mart of approved data for Win product AI agents"
 
+  - name: sales_reverse_etl
+    description: "Sales/biz-ops outbound (reverse-ETL) sendable marts: candidate export feeds for HubSpot and TechSpeed. PII-bearing; read access is scoped to the mart_sales_reverse_etl_readers group, not all data users (excluded from shared_marts). See DATA-2011."
+
