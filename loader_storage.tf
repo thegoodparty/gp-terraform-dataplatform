@@ -125,8 +125,11 @@ resource "databricks_storage_credential" "loader" {
 }
 
 resource "databricks_external_location" "loader" {
-  name            = var.loader_external_location_name
-  url             = "s3://${var.loader_s3_bucket}/"
+  name = var.loader_external_location_name
+  # Reference the bucket resource (not var.loader_s3_bucket) so the graph has a create-time edge
+  # to the bucket — the value is identical, but it stops the create-time s3:ListBucket validation
+  # from racing ahead of bucket creation (NoSuchBucket).
+  url             = "s3://${aws_s3_bucket.loader.bucket}/"
   credential_name = databricks_storage_credential.loader.name
   comment         = "People-API loader exports (DATA-1905)"
 
