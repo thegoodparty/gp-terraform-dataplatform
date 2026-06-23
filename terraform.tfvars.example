@@ -39,3 +39,16 @@ astro_region         = "us-west-2"
 astro_contact_emails = ["your-email@example.com"]
 
 # Note: Astro environment configs (dev/prod) are defined in locals.tf
+
+# =============================================================================
+# People-API loader storage (DATA-1905) — all have sensible defaults; override
+# only if needed. loader_s3_bucket MUST match the loader's LOADER_S3_BUCKET.
+# =============================================================================
+# aws_region                     = "us-west-2"
+# loader_s3_bucket               = "gp-people-loader-us-west-2"
+# loader_export_lifecycle_days   = 30
+# loader_uc_role_name            = "gp-people-loader-uc-access"
+# loader_storage_credential_name = "people-loader-s3"
+# loader_external_location_name  = "people-loader"
+# loader_service_principal_name  = "people-api-loader"
+# rds_s3_import_role_name        = ""   # set to the DATA-1856 role to grant Aurora read

@@ -73,3 +73,67 @@ variable "astro_contact_emails" {
 
 # Note: Astro environment configs (dev/prod) are defined in locals.tf
 # Both Airflow environments live in our single infrastructure
+
+# =============================================================================
+# People-API loader storage (DATA-1905)
+# Dedicated S3 bucket the loader's `unload` step writes to (Databricks) and the
+# `copy` step reads from (Aurora), plus the UC external location + storage
+# credential + dedicated service principal that govern Databricks access.
+# =============================================================================
+
+variable "aws_region" {
+  description = "AWS region for the loader S3 bucket + IAM"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "loader_s3_bucket" {
+  description = <<-EOT
+    Name of the dedicated loader S3 bucket to create. Must match the loader's
+    LOADER_S3_BUCKET env var. Region-suffixed to keep the name globally unique.
+  EOT
+  type        = string
+  default     = "gp-people-loader-us-west-2"
+}
+
+variable "loader_export_lifecycle_days" {
+  description = "Expire voter_export_*/ objects after this many days (per-run exports are disposable post-cutover)."
+  type        = number
+  default     = 30
+}
+
+variable "loader_uc_role_name" {
+  description = "Name of the IAM role Databricks Unity Catalog assumes to read/write the loader bucket."
+  type        = string
+  default     = "gp-people-loader-uc-access"
+}
+
+variable "loader_storage_credential_name" {
+  description = "Databricks UC storage credential name for the loader bucket."
+  type        = string
+  default     = "people-loader-s3"
+}
+
+variable "loader_external_location_name" {
+  description = "Databricks UC external location name for the loader bucket."
+  type        = string
+  default     = "people-loader"
+}
+
+variable "loader_service_principal_name" {
+  description = "Display name of the dedicated loader service principal (the unload warehouse runs as this)."
+  type        = string
+  default     = "people-api-loader"
+}
+
+variable "rds_s3_import_role_name" {
+  description = <<-EOT
+    Name of the existing rds-s3-import IAM role (DATA-1856) that Aurora's
+    aws_s3.table_import_from_s3 assumes. When set, an inline policy granting read
+    on the loader bucket is attached so the `copy` step can import. Leave "" to
+    skip (e.g. until the role name is confirmed); the Aurora-read grant is then a
+    follow-up. The role itself is NOT managed here.
+  EOT
+  type        = string
+  default     = ""
+}
