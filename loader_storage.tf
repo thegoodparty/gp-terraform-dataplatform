@@ -130,6 +130,12 @@ resource "databricks_external_location" "loader" {
   credential_name = databricks_storage_credential.loader.name
   comment         = "People-API loader exports (DATA-1905)"
 
+  # The external location validates at create time with a real s3:ListBucket via the assumed
+  # role. The inline S3 policy and the storage credential are sibling branches off the IAM role
+  # with no edge between them, so without this Terraform could validate before the policy is
+  # attached -> AccessDenied. (Orthogonal to IAM eventual-consistency, which may still need a re-apply.)
+  depends_on = [aws_iam_role_policy.loader_uc]
+
   lifecycle {
     prevent_destroy = true
   }
