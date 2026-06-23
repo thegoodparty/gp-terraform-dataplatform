@@ -24,4 +24,11 @@ provider "astro" {
 # Credentials come from the standard AWS chain (CI role / local profile).
 provider "aws" {
   region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project   = "gp-people-loader"
+      ManagedBy = "terraform"
+    }
+  }
 }

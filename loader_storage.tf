@@ -19,10 +19,15 @@ data "aws_caller_identity" "current" {}
 resource "aws_s3_bucket" "loader" {
   bucket = var.loader_s3_bucket
 
+  # Project/ManagedBy come from the provider default_tags.
   tags = {
-    Project   = "gp-people-loader"
-    ManagedBy = "terraform"
-    Purpose   = "people-api voter unload/load staging (DATA-1640)"
+    Purpose = "people-api voter unload/load staging (DATA-1640)"
+  }
+
+  # The loader's data path — guard against an accidental destroy/recreate, matching the
+  # repo's convention on persistent stores (catalogs/schemas/volumes).
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
@@ -78,24 +83,18 @@ data "databricks_aws_unity_catalog_policy" "loader" {
   role_name      = var.loader_uc_role_name
 }
 
-resource "aws_iam_policy" "loader_uc" {
-  name   = "${var.loader_uc_role_name}-policy"
-  policy = data.databricks_aws_unity_catalog_policy.loader.json
-}
-
 resource "aws_iam_role" "loader_uc" {
   name               = var.loader_uc_role_name
   assume_role_policy = data.databricks_aws_unity_catalog_assume_role_policy.loader.json
-
-  tags = {
-    Project   = "gp-people-loader"
-    ManagedBy = "terraform"
-  }
+  # Project/ManagedBy come from the provider default_tags.
 }
 
-resource "aws_iam_role_policy_attachment" "loader_uc" {
-  role       = aws_iam_role.loader_uc.name
-  policy_arn = aws_iam_policy.loader_uc.arn
+# Inline policy: this UC access policy is 1:1 with the role and never shared, so an inline
+# policy is simpler than a managed policy + attachment (and matches the rds-s3-import block below).
+resource "aws_iam_role_policy" "loader_uc" {
+  name   = "${var.loader_uc_role_name}-policy"
+  role   = aws_iam_role.loader_uc.id
+  policy = data.databricks_aws_unity_catalog_policy.loader.json
 }
 
 # --- UC storage credential + external location ---------------------------------
@@ -106,6 +105,10 @@ resource "databricks_storage_credential" "loader" {
   aws_iam_role {
     role_arn = aws_iam_role.loader_uc.arn
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "databricks_external_location" "loader" {
@@ -113,17 +116,17 @@ resource "databricks_external_location" "loader" {
   url             = "s3://${var.loader_s3_bucket}/"
   credential_name = databricks_storage_credential.loader.name
   comment         = "People-API loader exports (DATA-1905)"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
-# --- Dedicated loader service principal + grants -------------------------------
+# --- External location grant ---------------------------------------------------
 
-# The unload step's SQL warehouse runs as this principal; it needs WRITE on the
-# external location to INSERT OVERWRITE DIRECTORY into the bucket.
-resource "databricks_service_principal" "loader" {
-  provider     = databricks.account
-  display_name = var.loader_service_principal_name
-}
-
+# The dedicated loader service principal (databricks_service_principal.loader, defined in
+# service_principals.tf with the other managed SPs) drives the unload warehouse and needs
+# WRITE on the external location to INSERT OVERWRITE DIRECTORY into the bucket.
 resource "databricks_grants" "loader_external_location" {
   external_location = databricks_external_location.loader.id
 
