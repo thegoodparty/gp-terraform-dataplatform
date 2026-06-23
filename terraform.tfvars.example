@@ -51,4 +51,4 @@ astro_contact_emails = ["your-email@example.com"]
 # loader_storage_credential_name = "people-loader-s3"
 # loader_external_location_name  = "people-loader"
 # loader_service_principal_name  = "people-api-loader"
-# rds_s3_import_role_name        = ""   # set to the DATA-1856 role to grant Aurora read
+# rds_s3_import_role_name        = "rds-s3-import-people-loader"   # role created here for Aurora's s3 import; keep the rds-s3-import-* prefix

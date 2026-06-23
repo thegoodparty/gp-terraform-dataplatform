@@ -30,6 +30,20 @@ output "dbt_developers_group" {
 }
 
 # =============================================================================
+# People-API Loader Outputs (DATA-1905)
+# =============================================================================
+
+output "loader_bucket" {
+  description = "Name of the people-api loader S3 bucket"
+  value       = aws_s3_bucket.loader.bucket
+}
+
+output "rds_s3_import_role_arn" {
+  description = "ARN of the rds-s3-import role; set as the loader's LOADER_S3_IMPORT_ROLE_ARN"
+  value       = aws_iam_role.rds_s3_import.arn
+}
+
+# =============================================================================
 # Product Agent Outputs
 # =============================================================================
 

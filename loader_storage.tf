@@ -158,27 +158,52 @@ resource "databricks_grants" "loader_external_location" {
   }
 }
 
-# --- Aurora read (optional until the rds-s3-import role name is confirmed) ------
+# --- Aurora read (rds-s3-import role) ------------------------------------------
 
-# Extends the existing rds-s3-import role (DATA-1856, created AWS-side) with read on
-# the loader bucket so `copy`'s aws_s3.table_import_from_s3 can import. The role
-# itself is not managed here — only this inline policy. Skipped while the var is "".
-resource "aws_iam_role_policy" "rds_s3_import_loader_read" {
-  count = var.rds_s3_import_role_name != "" ? 1 : 0
-  name  = "people-loader-bucket-read"
-  role  = var.rds_s3_import_role_name
+# The role Aurora assumes for aws_s3.table_import_from_s3 in the loader's `copy` step.
+# Created here (rather than reusing the POC's dated rds-s3-import-<date> role) so the
+# bucket and the role that reads it are managed together. Two out-of-band ties:
+#   - the loader's LOADER_S3_IMPORT_ROLE_ARN must point at this role (rds_s3_import_role_arn output);
+#   - the worker role's iam:PassRole grant (DATA-1856, scoped to rds-s3-import-*) must cover this
+#     name so `provision`'s add-role-to-db-cluster can attach it.
+resource "aws_iam_role" "rds_s3_import" {
+  name = var.rds_s3_import_role_name
+
+  # Trust RDS to assume the role; aws:SourceAccount guards against the confused-deputy problem.
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = { Service = "rds.amazonaws.com" }
+        Action    = "sts:AssumeRole"
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      },
+    ]
+  })
+  # Project/ManagedBy come from the provider default_tags.
+}
+
+# Read on the loader bucket so table_import_from_s3 can pull the CSV parts.
+resource "aws_iam_role_policy" "rds_s3_import" {
+  name = "s3-import"
+  role = aws_iam_role.rds_s3_import.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["s3:GetObject"]
-        Resource = "${aws_s3_bucket.loader.arn}/*"
+        Action   = ["s3:ListBucket"]
+        Resource = aws_s3_bucket.loader.arn
       },
       {
         Effect   = "Allow"
-        Action   = ["s3:ListBucket"]
-        Resource = aws_s3_bucket.loader.arn
+        Action   = ["s3:GetObject"]
+        Resource = "${aws_s3_bucket.loader.arn}/*"
       },
     ]
   })

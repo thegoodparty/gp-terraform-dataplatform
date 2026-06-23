@@ -128,12 +128,11 @@ variable "loader_service_principal_name" {
 
 variable "rds_s3_import_role_name" {
   description = <<-EOT
-    Name of the existing rds-s3-import IAM role (DATA-1856) that Aurora's
-    aws_s3.table_import_from_s3 assumes. When set, an inline policy granting read
-    on the loader bucket is attached so the `copy` step can import. Leave "" to
-    skip (e.g. until the role name is confirmed); the Aurora-read grant is then a
-    follow-up. The role itself is NOT managed here.
+    Name of the rds-s3-import IAM role created here for Aurora's
+    aws_s3.table_import_from_s3 (the loader's `copy` step). Keep the rds-s3-import-*
+    prefix so the worker role's iam:PassRole grant (DATA-1856) covers it, and set the
+    loader's LOADER_S3_IMPORT_ROLE_ARN to this role's ARN (see the rds_s3_import_role_arn output).
   EOT
   type        = string
-  default     = ""
+  default     = "rds-s3-import-people-loader"
 }
