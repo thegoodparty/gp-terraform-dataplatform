@@ -54,6 +54,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "loader" {
 # Per-run exports (voter_export_<date>/) are disposable once cutover completes.
 resource "aws_s3_bucket_lifecycle_configuration" "loader" {
   bucket = aws_s3_bucket.loader.id
+
   rule {
     id     = "expire-voter-exports"
     status = "Enabled"
@@ -62,6 +63,18 @@ resource "aws_s3_bucket_lifecycle_configuration" "loader" {
     }
     expiration {
       days = var.loader_export_lifecycle_days
+    }
+  }
+
+  # Spark/Databricks writes the CSV parts via multipart upload; a failed unload can leave
+  # incomplete uploads that the prefix-expiry rule never reaches. Reap them so they don't
+  # accrue storage cost. Empty filter = whole bucket.
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+    filter {}
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
     }
   }
 }

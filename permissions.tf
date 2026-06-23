@@ -328,6 +328,14 @@ resource "databricks_permissions" "sql_warehouse_starter" {
     service_principal_name = databricks_service_principal.segment_storage.application_id
     permission_level       = "CAN_USE"
   }
+
+  # People-API loader SP (DATA-1905): the unload step submits INSERT OVERWRITE DIRECTORY to
+  # this warehouse, so the SP needs CAN_USE. The SP is defined in service_principals.tf and
+  # writes to the loader bucket via the external-location grant in loader_storage.tf.
+  access_control {
+    service_principal_name = databricks_service_principal.loader.application_id
+    permission_level       = "CAN_USE"
+  }
 }
 
 # Dedicated SQL warehouse for the Sigma Computing POV.
