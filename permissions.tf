@@ -253,6 +253,22 @@ resource "databricks_grant" "model_predictions_ml_users" {
   ]
 }
 
+# Singular grant won't clobber grants set outside Terraform.
+# dbt-users is the dbt Cloud CI/transform principal group. It needs EXECUTE to
+# load the viability MLflow models in the int__civics_viability_scoring waterfall
+# (DATA-1938). Granted at the SCHEMA level so all current and future models are
+# covered: a per-model EXECUTE grant existed only on viabilitywithopponentdata,
+# so CI broke when the other four waterfall models were copied in without it.
+resource "databricks_grant" "model_predictions_dbt_users" {
+  schema = databricks_schema.model_predictions.id
+
+  principal = data.databricks_group.dbt_users.display_name
+  privileges = [
+    "USE_SCHEMA",
+    "EXECUTE"
+  ]
+}
+
 # ml-users get everything in sandbox
 resource "databricks_grant" "sandbox_ml_users" {
   schema = "${databricks_catalog.main.name}.sandbox"
