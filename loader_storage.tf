@@ -21,7 +21,7 @@ resource "aws_s3_bucket" "loader" {
 
   # Project/ManagedBy come from the provider default_tags.
   tags = {
-    Purpose = "people-api voter unload/load staging (DATA-1905)"
+    Purpose = "people-api voter unload/load staging DATA-1905"
   }
 
   # The loader's data path — guard against an accidental destroy/recreate, matching the
