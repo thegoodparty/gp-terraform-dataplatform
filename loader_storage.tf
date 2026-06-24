@@ -3,28 +3,35 @@
 #
 # A dedicated S3 bucket the loader's `unload` step writes to (from Databricks, via
 # the UC external location below) and the `copy` step reads from (from Aurora, via
-# the rds-s3-import role). Governs Databricks access with a UC storage credential +
-# external location and a dedicated loader service principal.
+# the rds-s3-import role), governed by a UC storage credential + external location.
 #
-# IAM for the storage credential uses the Databricks-provided policy generators
-# (databricks_aws_unity_catalog_policy / _assume_role_policy) rather than a
-# hand-written cross-account trust — these emit the exact trust (Databricks UC
-# master role + self-assumption) and S3 access policy UC requires.
+# IAM for the storage credential uses the Databricks-provided policy generators,
+# which emit the exact cross-account trust and S3 policy UC requires.
 # =============================================================================
 
 data "aws_caller_identity" "current" {}
 
+locals {
+  # Single-environment resource names. loader_s3_bucket MUST match the loader's
+  # LOADER_S3_BUCKET env var; the bucket is region-suffixed for global uniqueness.
+  loader_s3_bucket               = "gp-people-loader-us-west-2"
+  loader_uc_role_name            = "gp-people-loader-uc-access"
+  loader_storage_credential_name = "people-loader-s3"
+  loader_external_location_name  = "people-loader"
+  # rds-s3-import-* prefix is load-bearing: the worker role's iam:PassRole grant
+  # (DATA-1856) is scoped to that prefix.
+  rds_s3_import_role_name = "rds-s3-import-people-loader"
+
+  loader_tags = { Project = "gp-people-loader" }
+}
+
 # --- S3 bucket -----------------------------------------------------------------
 
 resource "aws_s3_bucket" "loader" {
-  bucket = var.loader_s3_bucket
+  bucket = local.loader_s3_bucket
+  tags   = merge(local.loader_tags, { Purpose = "people-api voter unload/load staging (DATA-1905)" })
 
-  # Project/ManagedBy come from the provider default_tags.
-  tags = {
-    Purpose = "people-api voter unload/load staging (DATA-1905)"
-  }
-
-  # The loader's data path — guard against an accidental destroy/recreate, matching the
+  # The loader's data path — guard against accidental destroy/recreate, matching the
   # repo's convention on persistent stores (catalogs/schemas/volumes).
   lifecycle {
     prevent_destroy = true
@@ -39,9 +46,8 @@ resource "aws_s3_bucket_public_access_block" "loader" {
   restrict_public_buckets = true
 }
 
-# SSE-S3 (AES256). NOTE: SSE-KMS is deferred — it would require kms:Decrypt on both
-# the UC storage-credential role and the rds-s3-import role; revisit if the data
-# warrants a CMK.
+# SSE-S3 (AES256). SSE-KMS is deferred (would add kms:Decrypt to the UC and
+# rds-s3-import roles); revisit if the data warrants a CMK.
 resource "aws_s3_bucket_server_side_encryption_configuration" "loader" {
   bucket = aws_s3_bucket.loader.id
   rule {
@@ -66,9 +72,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "loader" {
     }
   }
 
-  # Spark/Databricks writes the CSV parts via multipart upload; a failed unload can leave
-  # incomplete uploads that the prefix-expiry rule never reaches. Reap them so they don't
-  # accrue storage cost. Empty filter = whole bucket.
+  # Reap failed-unload multipart uploads the prefix-expiry rule never reaches.
   rule {
     id     = "abort-incomplete-multipart-uploads"
     status = "Enabled"
@@ -85,27 +89,27 @@ resource "aws_s3_bucket_lifecycle_configuration" "loader" {
 # is the Databricks account id for an account-level storage credential.
 data "databricks_aws_unity_catalog_assume_role_policy" "loader" {
   aws_account_id = data.aws_caller_identity.current.account_id
-  role_name      = var.loader_uc_role_name
+  role_name      = local.loader_uc_role_name
   external_id    = var.databricks_account_id
 }
 
 # S3 access policy scoped to the loader bucket.
 data "databricks_aws_unity_catalog_policy" "loader" {
   aws_account_id = data.aws_caller_identity.current.account_id
-  bucket_name    = var.loader_s3_bucket
-  role_name      = var.loader_uc_role_name
+  bucket_name    = local.loader_s3_bucket
+  role_name      = local.loader_uc_role_name
 }
 
 resource "aws_iam_role" "loader_uc" {
-  name               = var.loader_uc_role_name
+  name               = local.loader_uc_role_name
   assume_role_policy = data.databricks_aws_unity_catalog_assume_role_policy.loader.json
-  # Project/ManagedBy come from the provider default_tags.
+  tags               = local.loader_tags
 }
 
-# Inline policy: this UC access policy is 1:1 with the role and never shared, so an inline
-# policy is simpler than a managed policy + attachment (and matches the rds-s3-import block below).
+# Inline policy: 1:1 with the role and never shared, so simpler than a managed
+# policy + attachment (matches the rds-s3-import block below).
 resource "aws_iam_role_policy" "loader_uc" {
-  name   = "${var.loader_uc_role_name}-policy"
+  name   = "${local.loader_uc_role_name}-policy"
   role   = aws_iam_role.loader_uc.id
   policy = data.databricks_aws_unity_catalog_policy.loader.json
 }
@@ -113,7 +117,7 @@ resource "aws_iam_role_policy" "loader_uc" {
 # --- UC storage credential + external location ---------------------------------
 
 resource "databricks_storage_credential" "loader" {
-  name    = var.loader_storage_credential_name
+  name    = local.loader_storage_credential_name
   comment = "People-API loader bucket access (DATA-1905)"
   aws_iam_role {
     role_arn = aws_iam_role.loader_uc.arn
@@ -125,16 +129,16 @@ resource "databricks_storage_credential" "loader" {
 }
 
 resource "databricks_external_location" "loader" {
-  name = var.loader_external_location_name
-  # Reference the bucket resource (not var.loader_s3_bucket) so the graph has a create-time edge
-  # to the bucket — the value is identical, but it stops the create-time s3:ListBucket validation
-  # from racing ahead of bucket creation (NoSuchBucket).
+  name = local.loader_external_location_name
+  # Reference the bucket resource (not the literal) so the graph has a create-time edge
+  # to the bucket, stopping the create-time s3:ListBucket validation from racing ahead of
+  # bucket creation (NoSuchBucket).
   url             = "s3://${aws_s3_bucket.loader.bucket}/"
   credential_name = databricks_storage_credential.loader.name
   comment         = "People-API loader exports (DATA-1905)"
 
   # The external location validates at create time with a real s3:ListBucket via the assumed
-  # role. The inline S3 policy and the storage credential are sibling branches off the IAM role
+  # role. The inline policy and the storage credential are sibling branches off the IAM role
   # with no edge between them, so without this Terraform could validate before the policy is
   # attached -> AccessDenied. (Orthogonal to IAM eventual-consistency, which may still need a re-apply.)
   depends_on = [aws_iam_role_policy.loader_uc]
@@ -144,19 +148,7 @@ resource "databricks_external_location" "loader" {
   }
 }
 
-# --- External location grant ---------------------------------------------------
-
-# The dedicated loader service principal (databricks_service_principal.loader, defined in
-# service_principals.tf with the other managed SPs) drives the unload warehouse and needs
-# WRITE on the external location to INSERT OVERWRITE DIRECTORY into the bucket.
-resource "databricks_grants" "loader_external_location" {
-  external_location = databricks_external_location.loader.id
-
-  grant {
-    principal  = databricks_service_principal.loader.application_id
-    privileges = ["READ_FILES", "WRITE_FILES"]
-  }
-}
+# Grants on this external location live in permissions.tf with the repo's other grants.
 
 # --- Aurora read (rds-s3-import role) ------------------------------------------
 
@@ -167,7 +159,8 @@ resource "databricks_grants" "loader_external_location" {
 #   - the worker role's iam:PassRole grant (DATA-1856, scoped to rds-s3-import-*) must cover this
 #     name so `provision`'s add-role-to-db-cluster can attach it.
 resource "aws_iam_role" "rds_s3_import" {
-  name = var.rds_s3_import_role_name
+  name = local.rds_s3_import_role_name
+  tags = local.loader_tags
 
   # Trust RDS to assume the role, guarding against the confused-deputy problem:
   #   - SourceAccount pins the calling account;
@@ -193,7 +186,6 @@ resource "aws_iam_role" "rds_s3_import" {
       },
     ]
   })
-  # Project/ManagedBy come from the provider default_tags.
 }
 
 # Read on the loader bucket so table_import_from_s3 can pull the CSV parts.

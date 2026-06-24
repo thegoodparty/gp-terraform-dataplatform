@@ -96,7 +96,7 @@ resource "databricks_mws_permission_assignment" "icp_finder" {
 # this SP; it gets WRITE on the loader external location in loader_storage.tf.
 resource "databricks_service_principal" "loader" {
   provider     = databricks.account
-  display_name = var.loader_service_principal_name
+  display_name = "people-api-loader"
 
   lifecycle {
     prevent_destroy = true

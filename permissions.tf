@@ -125,6 +125,18 @@ resource "databricks_grants" "external_location_storage" {
   }
 }
 
+# People-API loader external location (DATA-1905). The loader SP drives the unload
+# warehouse and needs WRITE to INSERT OVERWRITE DIRECTORY into the bucket. Location +
+# credential are defined in loader_storage.tf; the SP in service_principals.tf.
+resource "databricks_grants" "loader_external_location" {
+  external_location = databricks_external_location.loader.id
+
+  grant {
+    principal  = databricks_service_principal.loader.application_id
+    privileges = ["READ_FILES", "WRITE_FILES"]
+  }
+}
+
 resource "databricks_grants" "catalog_segment_storage" {
   catalog = databricks_catalog.segment_storage.name
 
