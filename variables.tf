@@ -136,3 +136,13 @@ variable "rds_s3_import_role_name" {
   type        = string
   default     = "rds-s3-import-people-loader"
 }
+
+variable "loader_db_cluster_prefix" {
+  description = <<-EOT
+    Name prefix of the Aurora clusters the loader provisions (loader config.py names them
+    gp-people-db-<run_date>). Used to scope the rds-s3-import role's trust to aws:SourceArn,
+    so only the loader's own clusters can assume it. Must match the loader's new_cluster_id.
+  EOT
+  type        = string
+  default     = "gp-people-db"
+}

@@ -21,7 +21,7 @@ resource "aws_s3_bucket" "loader" {
 
   # Project/ManagedBy come from the provider default_tags.
   tags = {
-    Purpose = "people-api voter unload/load staging (DATA-1640)"
+    Purpose = "people-api voter unload/load staging (DATA-1905)"
   }
 
   # The loader's data path — guard against an accidental destroy/recreate, matching the
@@ -169,7 +169,12 @@ resource "databricks_grants" "loader_external_location" {
 resource "aws_iam_role" "rds_s3_import" {
   name = var.rds_s3_import_role_name
 
-  # Trust RDS to assume the role; aws:SourceAccount guards against the confused-deputy problem.
+  # Trust RDS to assume the role, guarding against the confused-deputy problem:
+  #   - SourceAccount pins the calling account;
+  #   - SourceArn (ArnLike) pins the source to the loader's own clusters. The loader names
+  #     every provisioned cluster gp-people-db-<run_date> (config.py new_cluster_id), so the
+  #     prefix wildcard covers each run and the gp-people-db-prod serving cluster without
+  #     blocking the per-run train-deployment replacements.
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -180,6 +185,9 @@ resource "aws_iam_role" "rds_s3_import" {
         Condition = {
           StringEquals = {
             "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+          ArnLike = {
+            "aws:SourceArn" = "arn:aws:rds:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster:${var.loader_db_cluster_prefix}-*"
           }
         }
       },

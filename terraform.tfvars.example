@@ -52,3 +52,4 @@ astro_contact_emails = ["your-email@example.com"]
 # loader_external_location_name  = "people-loader"
 # loader_service_principal_name  = "people-api-loader"
 # rds_s3_import_role_name        = "rds-s3-import-people-loader"   # role created here for Aurora's s3 import; keep the rds-s3-import-* prefix
+# loader_db_cluster_prefix       = "gp-people-db"                  # scopes the role's trust to the loader's clusters; must match new_cluster_id

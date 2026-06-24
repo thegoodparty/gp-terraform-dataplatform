@@ -336,6 +336,11 @@ resource "databricks_permissions" "sql_warehouse_starter" {
     service_principal_name = databricks_service_principal.loader.application_id
     permission_level       = "CAN_USE"
   }
+
+  # The loader SP's access_control references the SP but not its workspace assignment.
+  # Without this edge the workspace-scoped warehouse grant can run before the SP is a
+  # workspace member -> "principal not found" on first apply (matches sigma_pov/agent below).
+  depends_on = [databricks_mws_permission_assignment.loader]
 }
 
 # Dedicated SQL warehouse for the Sigma Computing POV.
