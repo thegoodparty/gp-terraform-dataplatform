@@ -1,5 +1,5 @@
 # =============================================================================
-# People-API loader storage — DATA-1905
+# People-API loader storage
 #
 # A dedicated S3 bucket the loader's `unload` step writes to (from Databricks, via
 # the UC external location below) and the `copy` step reads from (from Aurora, via
@@ -19,7 +19,7 @@ locals {
   loader_storage_credential_name = "people-loader-s3"
   loader_external_location_name  = "people-loader"
   # rds-s3-import-* prefix is load-bearing: the worker role's iam:PassRole grant
-  # (DATA-1856) is scoped to that prefix.
+  # is scoped to that prefix.
   rds_s3_import_role_name = "rds-s3-import-people-loader"
 
   loader_tags = { Project = "gp-people-loader" }
@@ -156,7 +156,7 @@ resource "databricks_external_location" "loader" {
 # Created here (rather than reusing the POC's dated rds-s3-import-<date> role) so the
 # bucket and the role that reads it are managed together. Two out-of-band ties:
 #   - the loader's LOADER_S3_IMPORT_ROLE_ARN must point at this role (rds_s3_import_role_arn output);
-#   - the worker role's iam:PassRole grant (DATA-1856, scoped to rds-s3-import-*) must cover this
+#   - the worker role's iam:PassRole grant (scoped to rds-s3-import-*) must cover this
 #     name so `provision`'s add-role-to-db-cluster can attach it.
 resource "aws_iam_role" "rds_s3_import" {
   name = local.rds_s3_import_role_name

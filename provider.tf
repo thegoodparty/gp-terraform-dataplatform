@@ -20,7 +20,7 @@ provider "astro" {
   organization_id = var.astro_organization_id
 }
 
-# AWS provider for the people-api loader's S3 storage + IAM (DATA-1905).
+# AWS provider for the people-api loader's S3 storage + IAM.
 # Credentials come from the standard AWS chain (CI role / local profile).
 # Project is tagged per-resource (local.loader_tags); default_tags is reserved for
 # repo-wide tags so future unrelated AWS resources don't inherit a loader Project.

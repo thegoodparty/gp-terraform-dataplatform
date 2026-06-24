@@ -41,7 +41,7 @@ astro_contact_emails = ["your-email@example.com"]
 # Note: Astro environment configs (dev/prod) are defined in locals.tf
 
 # =============================================================================
-# People-API loader storage (DATA-1905). Resource names are fixed locals in
+# People-API loader storage. Resource names are fixed locals in
 # loader_storage.tf. Only the tunables below are variables; defaults shown.
 # =============================================================================
 # aws_region                   = "us-west-2"

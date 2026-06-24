@@ -75,7 +75,7 @@ variable "astro_contact_emails" {
 # Both Airflow environments live in our single infrastructure
 
 # =============================================================================
-# People-API loader storage (DATA-1905)
+# People-API loader storage
 # Dedicated S3 bucket the loader's `unload` step writes to (Databricks) and the
 # `copy` step reads from (Aurora), plus the UC external location + storage
 # credential + dedicated service principal that govern Databricks access.
