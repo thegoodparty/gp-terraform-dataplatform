@@ -30,7 +30,7 @@ output "dbt_developers_group" {
 }
 
 # =============================================================================
-# People-API Loader Outputs (DATA-1905)
+# People-API Loader Outputs
 # =============================================================================
 
 output "loader_bucket" {
