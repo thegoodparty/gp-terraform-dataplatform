@@ -38,6 +38,11 @@ output "loader_bucket" {
   value       = aws_s3_bucket.loader.bucket
 }
 
+output "loader_s3_vpc_endpoint_id" {
+  description = "S3 Gateway VPC endpoint id for the loader (null until loader_vpc_id is set)"
+  value       = one(aws_vpc_endpoint.loader_s3[*].id)
+}
+
 output "rds_s3_import_role_arn" {
   description = "ARN of the rds-s3-import role; set as the loader's LOADER_S3_IMPORT_ROLE_ARN"
   value       = aws_iam_role.rds_s3_import.arn
