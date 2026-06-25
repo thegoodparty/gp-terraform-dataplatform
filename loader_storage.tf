@@ -29,7 +29,7 @@ locals {
 
 resource "aws_s3_bucket" "loader" {
   bucket = local.loader_s3_bucket
-  tags   = merge(local.loader_tags, { Purpose = "people-api voter unload/load staging (DATA-1905)" })
+  tags   = local.loader_tags
 
   # The loader's data path — guard against accidental destroy/recreate, matching the
   # repo's convention on persistent stores (catalogs/schemas/volumes).
