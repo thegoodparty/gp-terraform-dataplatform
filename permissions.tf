@@ -36,6 +36,14 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
+  # people-api-loader SP: catalog traversal only here; SELECT is scoped to the dbt build
+  # schema(s) below (databricks_grant.loader_dbt_*), since the loader should read only the
+  # people_api marts, not the whole catalog (voter data is restricted).
+  grant {
+    principal  = databricks_service_principal.loader.application_id
+    privileges = ["USE_CATALOG"]
+  }
+
   # Existing groups get catalog access
   grant {
     principal  = data.databricks_group.account_users.display_name
@@ -101,6 +109,26 @@ resource "databricks_grants" "catalog_main" {
     databricks_group.mart_readers_account,
     databricks_group.dbt_developers_account
   ]
+}
+
+# =============================================================================
+# People-API loader SP: read the people_api marts (DATA-1913)
+# =============================================================================
+# The people-api-loader SP reads m_people_api__* for both the loader's `unload` (Databricks ->
+# S3) and the load_people_api DAG's dbt-test gate. Scope SELECT to the dbt build schemas (prod
+# `dbt`, dev `dbt_staging`) rather than catalog-wide, since voter data is restricted. Singular
+# grants are additive — the dbt schemas are managed by dbt Cloud, not authoritatively here.
+
+resource "databricks_grant" "loader_dbt_schema" {
+  schema     = "${databricks_catalog.main.name}.dbt"
+  principal  = databricks_service_principal.loader.application_id
+  privileges = ["USE_SCHEMA", "SELECT"]
+}
+
+resource "databricks_grant" "loader_dbt_staging_schema" {
+  schema     = "${databricks_catalog.main.name}.dbt_staging"
+  principal  = databricks_service_principal.loader.application_id
+  privileges = ["USE_SCHEMA", "SELECT"]
 }
 
 # =============================================================================
