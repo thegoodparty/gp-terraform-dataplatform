@@ -47,4 +47,3 @@ astro_contact_emails = ["your-email@example.com"]
 # aws_region                   = "us-west-2"
 # loader_export_lifecycle_days = 30
 # loader_db_cluster_prefix     = "gp-people-db"   # scopes the rds-s3-import trust to the loader's clusters; must match new_cluster_id
-# loader_vpc_id                = "vpc-0763fa52c32ebcf6a"  # gp-master-api VPC (default in loader_network.tf); override only if Aurora moves
