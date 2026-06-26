@@ -15,9 +15,9 @@
 # =============================================================================
 
 variable "loader_vpc_id" {
-  description = "Prod VPC id hosting the loader's Aurora clusters. Empty disables the S3 gateway endpoint."
+  description = "Prod VPC id hosting the loader's Aurora clusters (gp-master-api). Empty disables the S3 gateway endpoint."
   type        = string
-  default     = ""
+  default     = "vpc-0763fa52c32ebcf6a"
 }
 
 data "aws_route_tables" "loader_vpc" {
