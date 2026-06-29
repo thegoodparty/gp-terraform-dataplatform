@@ -118,7 +118,7 @@ resource "aws_iam_role_policy" "loader_uc" {
 
 resource "databricks_storage_credential" "loader" {
   name    = local.loader_storage_credential_name
-  comment = "People-API loader bucket access (DATA-1905)"
+  comment = "People-API loader bucket access"
   aws_iam_role {
     role_arn = aws_iam_role.loader_uc.arn
   }
@@ -135,7 +135,7 @@ resource "databricks_external_location" "loader" {
   # bucket creation (NoSuchBucket).
   url             = "s3://${aws_s3_bucket.loader.bucket}/"
   credential_name = databricks_storage_credential.loader.name
-  comment         = "People-API loader exports (DATA-1905)"
+  comment         = "People-API loader exports"
 
   # The external location validates at create time with a real s3:ListBucket via the assumed
   # role. The inline policy and the storage credential are sibling branches off the IAM role

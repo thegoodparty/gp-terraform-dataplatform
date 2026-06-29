@@ -125,7 +125,7 @@ resource "databricks_grants" "external_location_storage" {
   }
 }
 
-# People-API loader external location (DATA-1913). The loader runs as the airflow SPs
+# People-API loader external location. The loader runs as the airflow SPs
 # (prod `airflow`, dev `airflow_dev`), which need WRITE to INSERT OVERWRITE DIRECTORY into the
 # bucket. Location + credential are defined in loader_storage.tf.
 resource "databricks_grants" "loader_external_location" {
@@ -360,7 +360,7 @@ resource "databricks_permissions" "sql_warehouse_starter" {
     permission_level       = "CAN_USE"
   }
 
-  # People-API loader (DATA-1913): the unload + dbt-test gate run on this warehouse as the
+  # People-API loader: the unload + dbt-test gate run on this warehouse as the
   # airflow SPs (prod `airflow`, dev `airflow_dev`), so both need CAN_USE.
   dynamic "access_control" {
     for_each = databricks_service_principal.airflow
