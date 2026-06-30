@@ -118,10 +118,7 @@ resource "aws_iam_role_policy" "loader_uc" {
 
 resource "databricks_storage_credential" "loader" {
   name    = local.loader_storage_credential_name
-  comment = "People-API loader bucket access"
-  # The external location below depends on this credential, so Databricks blocks any update
-  # (even a comment change) unless it is forced. Without this, terraform apply errors with
-  # "has 1 dependent storage location(s); use force option to update anyway."
+  comment      = "People-API loader bucket access"
   force_update = true
   aws_iam_role {
     role_arn = aws_iam_role.loader_uc.arn
@@ -140,8 +137,7 @@ resource "databricks_external_location" "loader" {
   url             = "s3://${aws_s3_bucket.loader.bucket}/"
   credential_name = databricks_storage_credential.loader.name
   comment         = "People-API loader exports"
-  # Same as the storage credential: force so updates apply even if dependents exist.
-  force_update = true
+  force_update    = true
 
   # The external location validates at create time with a real s3:ListBucket via the assumed
   # role. The inline policy and the storage credential are sibling branches off the IAM role
