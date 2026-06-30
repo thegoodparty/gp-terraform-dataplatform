@@ -125,15 +125,18 @@ resource "databricks_grants" "external_location_storage" {
   }
 }
 
-# People-API loader external location. The loader SP drives the unload
-# warehouse and needs WRITE to INSERT OVERWRITE DIRECTORY into the bucket. Location +
-# credential are defined in loader_storage.tf; the SP in service_principals.tf.
+# People-API loader external location. The loader runs as the airflow SPs
+# (prod `airflow`, dev `airflow_dev`), which need WRITE to INSERT OVERWRITE DIRECTORY into the
+# bucket. Location + credential are defined in loader_storage.tf.
 resource "databricks_grants" "loader_external_location" {
   external_location = databricks_external_location.loader.id
 
-  grant {
-    principal  = databricks_service_principal.loader.application_id
-    privileges = ["READ_FILES", "WRITE_FILES"]
+  dynamic "grant" {
+    for_each = databricks_service_principal.airflow
+    content {
+      principal  = grant.value.application_id
+      privileges = ["READ_FILES", "WRITE_FILES"]
+    }
   }
 }
 
@@ -357,18 +360,19 @@ resource "databricks_permissions" "sql_warehouse_starter" {
     permission_level       = "CAN_USE"
   }
 
-  # People-API loader SP: the unload step submits INSERT OVERWRITE DIRECTORY to
-  # this warehouse, so the SP needs CAN_USE. The SP is defined in service_principals.tf and
-  # writes to the loader bucket via the external-location grant above.
-  access_control {
-    service_principal_name = databricks_service_principal.loader.application_id
-    permission_level       = "CAN_USE"
+  # People-API loader: the unload + dbt-test gate run on this warehouse as the
+  # airflow SPs (prod `airflow`, dev `airflow_dev`), so both need CAN_USE.
+  dynamic "access_control" {
+    for_each = databricks_service_principal.airflow
+    content {
+      service_principal_name = access_control.value.application_id
+      permission_level       = "CAN_USE"
+    }
   }
 
-  # The loader SP's access_control references the SP but not its workspace assignment.
-  # Without this edge the workspace-scoped warehouse grant can run before the SP is a
-  # workspace member -> "principal not found" on first apply (matches sigma_pov/agent below).
-  depends_on = [databricks_mws_permission_assignment.loader]
+  # Edge to the SPs' workspace assignments so the workspace-scoped grant doesn't run before
+  # they're workspace members (matches sigma_pov/agent below).
+  depends_on = [databricks_mws_permission_assignment.airflow]
 }
 
 # Dedicated SQL warehouse for the Sigma Computing POV.
