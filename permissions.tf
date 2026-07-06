@@ -58,10 +58,10 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_SCHEMA"]
   }
 
-  # data-engineers group gets read access across entire catalog
+  # data-engineers group gets read access and grant management across entire catalog
   grant {
     principal  = data.databricks_group.data_engineers.display_name
-    privileges = ["SELECT"]
+    privileges = ["SELECT", "MANAGE"]
   }
 
   # dbt-users get catalog access and can create schemas
