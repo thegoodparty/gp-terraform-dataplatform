@@ -5,7 +5,7 @@
 # for the org rollout while still catching runaway usage.
 resource "databricks_budget" "sigma" {
   provider     = databricks.account
-  display_name = "sigma-warehouse-monthly"
+  display_name = "sigma-monthly-spend"
 
   alert_configurations {
     time_period        = "MONTH"
