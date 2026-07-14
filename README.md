@@ -77,6 +77,37 @@ This creates:
 - Group: `mart_newmart_readers`
 - Grants: USE_SCHEMA, SELECT for readers; CREATE_TABLE, MODIFY for dbt_cloud
 
+### Service principal: `product_analytics`
+
+Read-only service principal for the analytics governance loop (the event-health
+monitor and provenance backfill). Terraform manages the principal, its workspace
+assignment, and its grants:
+
+- `USE_CATALOG` on `goodparty_data_catalog`
+- `USE_SCHEMA` on the `dbt` schema
+- `SELECT` on `dbt.int__amplitude_event_catalog` and
+  `dbt.stg_airbyte_source__amplitude_api_events`
+- `CAN_USE` on the Serverless Starter Warehouse
+
+**The OAuth secret is not managed by Terraform** (it would land in remote state).
+It is generated manually and lives in two places:
+
+- **GitHub Actions secrets on `omni`**: `DATABRICKS_CLIENT_ID` /
+  `DATABRICKS_CLIENT_SECRET` (the Databricks SDK's standard M2M env-var names).
+- **1Password**, `Product-Analytics` vault.
+
+The `client_id` is the principal's application ID — get it from
+`terraform output product_analytics_service_principal`.
+
+**Generating / rotating the secret** (workspace admin):
+
+1. Databricks workspace → Settings → Identity and access → Service principals →
+   `product_analytics` → Secrets → **Generate secret**. Copy the secret value
+   (shown once) and the client ID.
+2. Update the two `omni` GitHub Actions secrets above.
+3. Update the `Product-Analytics` 1Password item.
+4. Delete the superseded secret in the Databricks console once the new one is in use.
+
 ---
 
 ## Astronomer (Astro) Airflow

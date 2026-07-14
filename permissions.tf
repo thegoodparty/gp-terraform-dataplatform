@@ -88,6 +88,13 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
   }
 
+  # product_analytics service principal: catalog access for the read-only
+  # analytics governance loop (schema + table SELECT scoped below).
+  grant {
+    principal  = databricks_service_principal.product_analytics.application_id
+    privileges = ["USE_CATALOG"]
+  }
+
   # airflow service principals can create and own their own schemas
   dynamic "grant" {
     for_each = databricks_service_principal.airflow
@@ -186,6 +193,36 @@ resource "databricks_grant" "system_access_audit_data_engineers" {
   table = "system.access.audit"
 
   principal  = data.databricks_group.data_engineers.display_name
+  privileges = ["SELECT"]
+}
+
+# =============================================================================
+# Analytics Governance Loop Permissions
+# =============================================================================
+# Minimum read access for the product_analytics service principal: the two dbt
+# tables the event-health monitor queries. Singular grants because the `dbt`
+# schema is created and owned by dbt Cloud (not Terraform-managed), so an
+# authoritative databricks_grants would clobber dbt's existing grant set.
+# SELECT is scoped to the two named tables, not the whole schema.
+
+resource "databricks_grant" "dbt_schema_product_analytics" {
+  schema = "${databricks_catalog.main.name}.dbt"
+
+  principal  = databricks_service_principal.product_analytics.application_id
+  privileges = ["USE_SCHEMA"]
+}
+
+resource "databricks_grant" "event_catalog_product_analytics" {
+  table = "${databricks_catalog.main.name}.dbt.int__amplitude_event_catalog"
+
+  principal  = databricks_service_principal.product_analytics.application_id
+  privileges = ["SELECT"]
+}
+
+resource "databricks_grant" "amplitude_events_product_analytics" {
+  table = "${databricks_catalog.main.name}.dbt.stg_airbyte_source__amplitude_api_events"
+
+  principal  = databricks_service_principal.product_analytics.application_id
   privileges = ["SELECT"]
 }
 
@@ -370,9 +407,18 @@ resource "databricks_permissions" "sql_warehouse_starter" {
     }
   }
 
+  # Analytics governance loop reads the two dbt tables from this warehouse.
+  access_control {
+    service_principal_name = databricks_service_principal.product_analytics.application_id
+    permission_level       = "CAN_USE"
+  }
+
   # Edge to the SPs' workspace assignments so the workspace-scoped grant doesn't run before
   # they're workspace members (matches sigma_pov/agent below).
-  depends_on = [databricks_mws_permission_assignment.airflow]
+  depends_on = [
+    databricks_mws_permission_assignment.airflow,
+    databricks_mws_permission_assignment.product_analytics,
+  ]
 }
 
 # Dedicated SQL warehouse for the Sigma Computing POV.

@@ -67,6 +67,15 @@ output "agent_warehouses" {
 }
 
 # =============================================================================
+# Analytics Governance Loop Outputs
+# =============================================================================
+
+output "product_analytics_service_principal" {
+  description = "Application (client) ID of the product_analytics service principal — the OAuth M2M client_id for the analytics governance loop"
+  value       = databricks_service_principal.product_analytics.application_id
+}
+
+# =============================================================================
 # Astronomer (Astro) Outputs
 # =============================================================================
 
