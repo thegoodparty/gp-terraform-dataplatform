@@ -198,10 +198,9 @@ resource "databricks_grant" "system_access_audit_data_engineers" {
 # =============================================================================
 # Analytics Governance Loop Permissions
 # =============================================================================
-# Singular grants: the dbt and airbyte_source schemas are owned outside Terraform
-# (dbt Cloud and Airbyte), so an authoritative databricks_grants would clobber
-# their existing grant sets. The monitor reads the two dbt tables; the provenance
-# backfill reads the airbyte_source taxonomy table for its event universe.
+# Use singular databricks_grant, not plural: the dbt and airbyte_source schemas
+# are owned outside Terraform (dbt Cloud, Airbyte), and a plural grant replaces
+# all their existing grants instead of adding to them.
 
 resource "databricks_grant" "dbt_schema_product_analytics" {
   schema = "${databricks_catalog.main.name}.dbt"
