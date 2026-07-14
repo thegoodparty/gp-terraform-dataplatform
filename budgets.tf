@@ -17,6 +17,16 @@ resource "databricks_budget" "sigma" {
       action_type = "EMAIL_NOTIFICATION"
       target      = "sanjay@goodparty.org"
     }
+
+    action_configurations {
+      action_type = "EMAIL_NOTIFICATION"
+      target      = "dan@goodparty.org"
+    }
+
+    action_configurations {
+      action_type = "EMAIL_NOTIFICATION"
+      target      = "hugh@goodparty.org"
+    }
   }
 
   filter {
