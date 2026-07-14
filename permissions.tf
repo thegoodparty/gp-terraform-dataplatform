@@ -198,9 +198,10 @@ resource "databricks_grant" "system_access_audit_data_engineers" {
 # =============================================================================
 # Analytics Governance Loop Permissions
 # =============================================================================
-# Use singular databricks_grant, not plural: the dbt and airbyte_source schemas
-# are owned outside Terraform (dbt Cloud, Airbyte), and a plural grant replaces
-# all their existing grants instead of adding to them.
+# Use singular databricks_grant, not plural: the dbt schema is owned outside
+# Terraform (dbt Cloud), and a plural grant replaces all its existing grants
+# instead of adding to them. All three readers query modeled dbt tables, so the
+# SP only needs this one schema.
 
 resource "databricks_grant" "dbt_schema_product_analytics" {
   schema = "${databricks_catalog.main.name}.dbt"
@@ -223,15 +224,8 @@ resource "databricks_grant" "amplitude_events_product_analytics" {
   privileges = ["SELECT"]
 }
 
-resource "databricks_grant" "airbyte_source_schema_product_analytics" {
-  schema = "${databricks_catalog.main.name}.airbyte_source"
-
-  principal  = databricks_service_principal.product_analytics.application_id
-  privileges = ["USE_SCHEMA"]
-}
-
 resource "databricks_grant" "taxonomy_event_type_product_analytics" {
-  table = "${databricks_catalog.main.name}.airbyte_source.amplitude_taxonomy_event_type"
+  table = "${databricks_catalog.main.name}.dbt.stg_airbyte_source__amplitude_taxonomy_event_type"
 
   principal  = databricks_service_principal.product_analytics.application_id
   privileges = ["SELECT"]
