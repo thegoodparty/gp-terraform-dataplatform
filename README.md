@@ -81,13 +81,11 @@ This creates:
 
 Read-only SP for the analytics governance loop. Terraform manages the principal
 and its grants; the OAuth secret is created manually so it stays out of remote
-state. The secret lives in omni GitHub Actions (`DATABRICKS_CLIENT_ID` /
-`DATABRICKS_CLIENT_SECRET`) and the `Product-Analytics` 1Password vault. The
-`client_id` is `terraform output product_analytics_service_principal`.
+state.
 
 To rotate: generate a new secret in the Databricks console (Settings > Identity
-and access > Service principals > `product_analytics` > Secrets), update both
-stores, then delete the old one.
+and access > Service principals > `product_analytics` > Secrets), update the
+stored copies, then delete the old one.
 
 ---
 
