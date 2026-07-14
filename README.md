@@ -96,7 +96,7 @@ It is generated manually and lives in two places:
   `DATABRICKS_CLIENT_SECRET` (the Databricks SDK's standard M2M env-var names).
 - **1Password**, `Product-Analytics` vault.
 
-The `client_id` is the principal's application ID — get it from
+The `client_id` is the principal's application ID. Get it from
 `terraform output product_analytics_service_principal`.
 
 **Generating / rotating the secret** (workspace admin):

@@ -92,10 +92,7 @@ resource "databricks_mws_permission_assignment" "icp_finder" {
   permissions  = ["USER"]
 }
 
-# Product Analytics service principal for the analytics governance loop
-# (event-health monitor + provenance backfill). Read-only; authenticates via
-# OAuth M2M. The OAuth secret is generated manually and stored in GitHub Actions
-# (omni) and the Product-Analytics 1Password vault — see README.
+# Read-only SP for the analytics governance loop. OAuth secret is manual; see README.
 resource "databricks_service_principal" "product_analytics" {
   provider     = databricks.account
   display_name = "product_analytics"

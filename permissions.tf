@@ -88,8 +88,7 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
   }
 
-  # product_analytics service principal: catalog access for the read-only
-  # analytics governance loop (schema + table SELECT scoped below).
+  # product_analytics SP: catalog access; table SELECT scoped below.
   grant {
     principal  = databricks_service_principal.product_analytics.application_id
     privileges = ["USE_CATALOG"]
@@ -199,11 +198,8 @@ resource "databricks_grant" "system_access_audit_data_engineers" {
 # =============================================================================
 # Analytics Governance Loop Permissions
 # =============================================================================
-# Minimum read access for the product_analytics service principal: the two dbt
-# tables the event-health monitor queries. Singular grants because the `dbt`
-# schema is created and owned by dbt Cloud (not Terraform-managed), so an
-# authoritative databricks_grants would clobber dbt's existing grant set.
-# SELECT is scoped to the two named tables, not the whole schema.
+# Singular grants: the dbt schema is dbt-Cloud-owned, so an authoritative
+# databricks_grants would clobber its existing grant set.
 
 resource "databricks_grant" "dbt_schema_product_analytics" {
   schema = "${databricks_catalog.main.name}.dbt"
