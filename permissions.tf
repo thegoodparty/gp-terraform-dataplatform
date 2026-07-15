@@ -88,12 +88,6 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
   }
 
-  # product_analytics SP: catalog access; table SELECT scoped below.
-  grant {
-    principal  = databricks_service_principal.product_analytics.application_id
-    privileges = ["USE_CATALOG"]
-  }
-
   # airflow service principals can create and own their own schemas
   dynamic "grant" {
     for_each = databricks_service_principal.airflow
@@ -195,41 +189,9 @@ resource "databricks_grant" "system_access_audit_data_engineers" {
   privileges = ["SELECT"]
 }
 
-# =============================================================================
-# Analytics Governance Loop Permissions
-# =============================================================================
-# Use singular databricks_grant, not plural: the dbt schema is owned outside
-# Terraform (dbt Cloud), and a plural grant replaces all its existing grants
-# instead of adding to them. All three readers query modeled dbt tables, so the
-# SP only needs this one schema.
-
-resource "databricks_grant" "dbt_schema_product_analytics" {
-  schema = "${databricks_catalog.main.name}.dbt"
-
-  principal  = databricks_service_principal.product_analytics.application_id
-  privileges = ["USE_SCHEMA"]
-}
-
-resource "databricks_grant" "event_catalog_product_analytics" {
-  table = "${databricks_catalog.main.name}.dbt.int__amplitude_event_catalog"
-
-  principal  = databricks_service_principal.product_analytics.application_id
-  privileges = ["SELECT"]
-}
-
-resource "databricks_grant" "amplitude_events_product_analytics" {
-  table = "${databricks_catalog.main.name}.dbt.stg_airbyte_source__amplitude_api_events"
-
-  principal  = databricks_service_principal.product_analytics.application_id
-  privileges = ["SELECT"]
-}
-
-resource "databricks_grant" "taxonomy_event_type_product_analytics" {
-  table = "${databricks_catalog.main.name}.dbt.stg_airbyte_source__amplitude_taxonomy_event_type"
-
-  principal  = databricks_service_principal.product_analytics.application_id
-  privileges = ["SELECT"]
-}
+# Analytics governance loop reads its amplitude tables through the mart_analytics
+# schema; the product_analytics SP gets USE_SCHEMA + SELECT there via membership in
+# the mart_analytics reader group (groups.tf). No per-relation grants to maintain.
 
 # Mart schema permissions - each reader group and dbt-developers get read access
 resource "databricks_grants" "mart_schemas" {

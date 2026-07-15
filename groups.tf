@@ -176,6 +176,15 @@ resource "databricks_group_member" "sigma_in_mart_analytics_readers" {
   member_id = databricks_service_principal.sigma.id
 }
 
+# Analytics governance loop reads its three amplitude tables through mart_analytics;
+# reader-group membership grants USE_SCHEMA + SELECT on the mart schema and USE_CATALOG,
+# so there are no per-relation grants to break when dbt rebuilds the models.
+resource "databricks_group_member" "product_analytics_in_mart_analytics_readers" {
+  provider  = databricks.account
+  group_id  = databricks_group.mart_readers_account["analytics"].id
+  member_id = databricks_service_principal.product_analytics.id
+}
+
 resource "databricks_group_member" "icp_finder_in_mart_civics_readers" {
   provider  = databricks.account
   group_id  = databricks_group.mart_readers_account["civics"].id
