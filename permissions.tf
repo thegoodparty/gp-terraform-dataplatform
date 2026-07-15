@@ -189,10 +189,6 @@ resource "databricks_grant" "system_access_audit_data_engineers" {
   privileges = ["SELECT"]
 }
 
-# Analytics governance loop reads its amplitude tables through the mart_analytics
-# schema; the product_analytics SP gets USE_SCHEMA + SELECT there via membership in
-# the mart_analytics reader group (groups.tf). No per-relation grants to maintain.
-
 # Mart schema permissions - each reader group and dbt-developers get read access
 resource "databricks_grants" "mart_schemas" {
   for_each = local.marts_map
