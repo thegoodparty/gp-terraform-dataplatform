@@ -77,6 +77,16 @@ This creates:
 - Group: `mart_newmart_readers`
 - Grants: USE_SCHEMA, SELECT for readers; CREATE_TABLE, MODIFY for dbt_cloud
 
+### Service principal: `product_analytics`
+
+Read-only SP for the analytics governance loop. Terraform manages the principal
+and its grants; the OAuth secret is created manually so it stays out of remote
+state.
+
+To rotate: generate a new secret in the Databricks console (Settings > Identity
+and access > Service principals > `product_analytics` > Secrets), update the
+stored copies, then delete the old one.
+
 ---
 
 ## Astronomer (Astro) Airflow

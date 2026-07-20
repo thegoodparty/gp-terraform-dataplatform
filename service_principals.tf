@@ -92,6 +92,23 @@ resource "databricks_mws_permission_assignment" "icp_finder" {
   permissions  = ["USER"]
 }
 
+# Read-only SP for the analytics governance loop. OAuth secret is manual; see README.
+resource "databricks_service_principal" "product_analytics" {
+  provider     = databricks.account
+  display_name = "product_analytics"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "databricks_mws_permission_assignment" "product_analytics" {
+  provider     = databricks.account
+  workspace_id = var.workspace_id
+  principal_id = databricks_service_principal.product_analytics.id
+  permissions  = ["USER"]
+}
+
 # Win and Serve product agent service principals. OAuth M2M credentials generated manually.
 resource "databricks_service_principal" "agent" {
   for_each     = local.agent_products

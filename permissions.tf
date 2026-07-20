@@ -370,9 +370,18 @@ resource "databricks_permissions" "sql_warehouse_starter" {
     }
   }
 
+  # Analytics governance loop reads the two dbt tables from this warehouse.
+  access_control {
+    service_principal_name = databricks_service_principal.product_analytics.application_id
+    permission_level       = "CAN_USE"
+  }
+
   # Edge to the SPs' workspace assignments so the workspace-scoped grant doesn't run before
   # they're workspace members (matches sigma_pov/agent below).
-  depends_on = [databricks_mws_permission_assignment.airflow]
+  depends_on = [
+    databricks_mws_permission_assignment.airflow,
+    databricks_mws_permission_assignment.product_analytics,
+  ]
 }
 
 # CAN_USE on the Sigma BI warehouse (databricks_sql_endpoint.sigma in warehouses.tf).
