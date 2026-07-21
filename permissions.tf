@@ -121,7 +121,7 @@ resource "databricks_grants" "external_location_storage" {
 
   grant {
     principal  = data.databricks_group.data_engineers.display_name
-    privileges = ["READ_FILES", "WRITE_FILES"]
+    privileges = ["CREATE_EXTERNAL_TABLE", "READ_FILES", "WRITE_FILES"]
   }
 }
 
