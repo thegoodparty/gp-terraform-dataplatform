@@ -121,7 +121,7 @@ resource "databricks_grants" "external_location_storage" {
 
   grant {
     principal  = data.databricks_group.data_engineers.display_name
-    privileges = ["READ_FILES", "WRITE_FILES"]
+    privileges = ["CREATE_EXTERNAL_TABLE", "READ_FILES", "WRITE_FILES"]
   }
 }
 
@@ -384,14 +384,9 @@ resource "databricks_permissions" "sql_warehouse_starter" {
   ]
 }
 
-# Dedicated SQL warehouse for the Sigma Computing POV.
-# Warehouse provisioned via UI; TF manages permissions only.
-data "databricks_sql_warehouse" "sigma_pov" {
-  name = "wh-sigma-pov"
-}
-
+# CAN_USE on the Sigma BI warehouse (databricks_sql_endpoint.sigma in warehouses.tf).
 resource "databricks_permissions" "sql_warehouse_sigma_pov" {
-  sql_endpoint_id = data.databricks_sql_warehouse.sigma_pov.id
+  sql_endpoint_id = databricks_sql_endpoint.sigma.id
 
   access_control {
     service_principal_name = databricks_service_principal.sigma.application_id
