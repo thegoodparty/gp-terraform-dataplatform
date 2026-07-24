@@ -106,3 +106,16 @@ variable "loader_db_cluster_prefix" {
   type        = string
   default     = "gp-people-db"
 }
+
+variable "loader_rds_admin_external_ids" {
+  description = <<-EOT
+    sts:ExternalId the Astro workload-identity role must present when assuming
+    gp-people-rds-admin-<env> (confused-deputy guard). Map keyed by environment
+    ("dev"/"prod"). Secret: supply via a non-committed tfvars file or CI secret,
+    not in git. The values must match what each Astro deployment sends
+    (ASTRO_ASSUME_ROLE_EXTERNAL_ID); read the current live values from the roles'
+    trust policies before the first apply so the import is a no-op.
+  EOT
+  type        = map(string)
+  sensitive   = true
+}

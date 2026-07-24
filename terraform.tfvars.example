@@ -47,3 +47,8 @@ astro_contact_emails = ["your-email@example.com"]
 # aws_region                   = "us-west-2"
 # loader_export_lifecycle_days = 30
 # loader_db_cluster_prefix     = "gp-people-db"   # scopes the rds-s3-import trust to the loader's clusters; must match new_cluster_id
+
+# sts:ExternalId per environment for the loader admin role trust policy. SECRET —
+# set in a non-committed tfvars/CI secret, not here. Values must match each Astro
+# deployment's ASTRO_ASSUME_ROLE_EXTERNAL_ID (read the live roles' trust policies).
+# loader_rds_admin_external_ids = { dev = "REDACTED", prod = "REDACTED" }
