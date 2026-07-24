@@ -58,10 +58,19 @@ jobs:
           ASTRO_ORGANIZATION_ID: ${{ vars.ASTRO_ORGANIZATION_ID }}
           ASTRO_CONTACT_EMAILS: ${{ vars.ASTRO_CONTACT_EMAILS }}
           CATALOG_STORAGE_BUCKET: ${{ vars.CATALOG_STORAGE_BUCKET }}
+          ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV: ${{ vars.ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV }}
+          ASTRO_ASSUME_ROLE_EXTERNAL_ID_PROD: ${{ vars.ASTRO_ASSUME_ROLE_EXTERNAL_ID_PROD }}
         run: |
           # ASTRO_CONTACT_EMAILS should be a JSON array: ["email1", "email2"]
           if [ -z "$ASTRO_CONTACT_EMAILS" ] || [ "$ASTRO_CONTACT_EMAILS" = "[]" ]; then
             echo "::error::ASTRO_CONTACT_EMAILS is empty or not configured"
+            exit 1
+          fi
+
+          # The loader admin role trust policies pin these per-env sts:ExternalId
+          # nonces; an empty value would rewrite the trust and break Astro's assume-role.
+          if [ -z "$ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV" ] || [ -z "$ASTRO_ASSUME_ROLE_EXTERNAL_ID_PROD" ]; then
+            echo "::error::ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV/_PROD is empty or not configured"
             exit 1
           fi
 
@@ -72,6 +81,7 @@ jobs:
           astro_organization_id     = "${ASTRO_ORGANIZATION_ID}"
           astro_contact_emails      = ${ASTRO_CONTACT_EMAILS}  # unquoted: value is a JSON array
           catalog_storage_bucket    = "${CATALOG_STORAGE_BUCKET}"
+          loader_rds_admin_external_ids = { dev = "${ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV}", prod = "${ASTRO_ASSUME_ROLE_EXTERNAL_ID_PROD}" }
           EOF
 
       - name: Terraform Init
