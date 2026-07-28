@@ -161,6 +161,8 @@ resource "aws_iam_role_policy" "loader_s3_ssm" {
           "ssm:PutParameter",
           "ssm:DeleteParameter",
           "ssm:AddTagsToResource",
+          # promote labels the new serving-parameter version `refresh-<date>` at cutover.
+          "ssm:LabelParameterVersion",
         ]
         Resource = [
           "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/people-db-connection-string-${each.key}",
