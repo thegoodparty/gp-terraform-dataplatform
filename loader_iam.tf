@@ -220,10 +220,23 @@ resource "aws_iam_role_policy" "loader_provision" {
         }
       },
       {
-        Sid      = "RdsProvisionManage"
-        Effect   = "Allow"
-        Action   = ["rds:DeleteDBCluster", "rds:AddRoleToDBCluster"]
-        Resource = "arn:aws:rds:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster:${local.loader_cluster_prefix}*"
+        Sid    = "RdsProvisionManage"
+        Effect = "Allow"
+        Action = [
+          "rds:DeleteDBCluster",
+          "rds:AddRoleToDBCluster",
+          # teardown: delete the writer instance, take/keep a final cluster snapshot, and
+          # (when not kept) delete the load/serve cluster parameter groups.
+          "rds:DeleteDBInstance",
+          "rds:CreateDBClusterSnapshot",
+          "rds:DeleteDBClusterParameterGroup",
+        ]
+        # cluster + db + cluster-pg (the shared list), plus the cluster-snapshot the final
+        # snapshot lands in. All name-scoped to gp-people-db-20*, so this can only ever touch a
+        # dated loader cluster, never the serving cluster or shared infra.
+        Resource = concat(local.loader_rds_cluster_arns, [
+          "arn:aws:rds:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster-snapshot:${local.loader_cluster_prefix}*",
+        ])
       },
       {
         Sid      = "PassRdsS3ImportRole"
