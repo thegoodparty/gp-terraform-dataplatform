@@ -28,6 +28,25 @@ locals {
   # See DATA-2011.
   shared_marts = { for k, v in local.marts_map : k => v if k != "mban2026" && k != "sales_reverse_etl" }
 
+  # The Astronomer-managed workload identity per deployment (Deployment > Details >
+  # Workload Identity). Every AWS role Airflow assumes trusts these.
+  astro_workload_identities = {
+    dev  = "arn:aws:iam::111928029897:role/astro-galactian-element-5125"
+    prod = "arn:aws:iam::111928029897:role/astro-exothermic-astronaut-9119"
+  }
+
+  # A dedicated queue for the L2 voter-file sync. Its tasks download a whole archive
+  # (largest ~7 GB) to the worker's fixed 10 GiB of ephemeral storage, so a second
+  # concurrent task on the same worker would exhaust the disk.
+  l2_voter_files_worker_queue = {
+    name               = "l2-voter-files"
+    is_default         = false
+    astro_machine      = "A5"
+    min_worker_count   = 0
+    max_worker_count   = 1
+    worker_concurrency = 1
+  }
+
   # Astro deployment environments
   # Both dev and prod Airflow environments live in our single infrastructure
   astro_environments = {
@@ -53,7 +72,8 @@ locals {
           min_worker_count   = 0
           max_worker_count   = 10
           worker_concurrency = 5
-        }
+        },
+        local.l2_voter_files_worker_queue,
       ]
       hibernation_schedules = [
         {
@@ -86,9 +106,10 @@ locals {
           min_worker_count   = 0
           max_worker_count   = 10
           worker_concurrency = 5
-        }
+        },
+        local.l2_voter_files_worker_queue,
       ]
-      hibernation_schedules   = []
+      hibernation_schedules = []
     }
   }
 }
