@@ -284,6 +284,20 @@ resource "databricks_grant" "model_predictions_dbt_users" {
   ]
 }
 
+# Singular grant won't clobber grants set outside Terraform.
+# data-engineers holds catalog-level MANAGE, which governs grants rather than
+# object creation, so it does not imply CREATE_TABLE. Tables provisioned here
+# outside dbt need it; granted to the group so it isn't tied to one account.
+resource "databricks_grant" "model_predictions_data_engineers" {
+  schema = databricks_schema.model_predictions.id
+
+  principal = data.databricks_group.data_engineers.display_name
+  privileges = [
+    "USE_SCHEMA",
+    "CREATE_TABLE"
+  ]
+}
+
 # ml-users get everything in sandbox
 resource "databricks_grant" "sandbox_ml_users" {
   schema = "${databricks_catalog.main.name}.sandbox"
