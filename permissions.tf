@@ -284,10 +284,10 @@ resource "databricks_grant" "model_predictions_dbt_users" {
   ]
 }
 
-# Singular grant won't clobber grants set outside Terraform.
-# data-engineers holds catalog-level MANAGE, which governs grants rather than
-# object creation, so it does not imply CREATE_TABLE. Tables provisioned here
-# outside dbt need it; granted to the group so it isn't tied to one account.
+# Singular grant is authoritative for this principal only, so unlike the plural
+# resource it leaves the schema owner's own grants alone. data-engineers holds
+# catalog-level MANAGE, which governs grants rather than object creation, so it
+# does not imply the CREATE_TABLE that tables provisioned here outside dbt need.
 resource "databricks_grant" "model_predictions_data_engineers" {
   schema = databricks_schema.model_predictions.id
 
