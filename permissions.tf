@@ -123,6 +123,13 @@ resource "databricks_grants" "external_location_storage" {
     principal  = data.databricks_group.data_engineers.display_name
     privileges = ["CREATE_EXTERNAL_TABLE", "READ_FILES", "WRITE_FILES"]
   }
+
+  # airflow_dev holds this from a console grant. This resource is authoritative
+  # for the location, so leaving it undeclared makes every apply plan a revoke.
+  grant {
+    principal  = databricks_service_principal.airflow["airflow_dev"].application_id
+    privileges = ["READ_FILES"]
+  }
 }
 
 # People-API loader external location. The loader runs as the airflow SPs
