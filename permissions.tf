@@ -338,6 +338,33 @@ resource "databricks_grants" "exports_zapier_schema" {
 }
 
 # =============================================================================
+# people-api Serving Table Permissions
+# =============================================================================
+
+# Interim read access for the gp-api application. Its own mart passes the raw L2
+# record through, but the app's queries are written against the people-db column
+# names, which only the m_people_api__* serving models carry. Scoped to those two
+# tables so the rest of the dbt working schema stays closed. Remove once the
+# mart serves the same shape.
+#
+# Singular grants: the dbt schema carries grants set outside Terraform.
+resource "databricks_grant" "dbt_schema_gp_api" {
+  schema = "${databricks_catalog.main.name}.dbt"
+
+  principal  = databricks_service_principal.gp_api.application_id
+  privileges = ["USE_SCHEMA"]
+}
+
+resource "databricks_grant" "people_api_serving_gp_api" {
+  for_each = toset(["m_people_api__voter", "m_people_api__district"])
+
+  table = "${databricks_catalog.main.name}.dbt.${each.value}"
+
+  principal  = databricks_service_principal.gp_api.application_id
+  privileges = ["SELECT"]
+}
+
+# =============================================================================
 # SQL Warehouse Permissions
 # =============================================================================
 
