@@ -4,11 +4,11 @@
 
 # Existing prod volume — imported into state
 resource "databricks_volume" "dbt_object_storage" {
-  name             = "object_storage"
-  catalog_name     = databricks_catalog.main.name
-  schema_name      = "dbt"
-  volume_type      = "MANAGED"
-  owner            = data.databricks_service_principal.dbt_cloud.application_id
+  name         = "object_storage"
+  catalog_name = databricks_catalog.main.name
+  schema_name  = "dbt"
+  volume_type  = "MANAGED"
+  owner        = data.databricks_service_principal.dbt_cloud.application_id
 
   lifecycle {
     prevent_destroy = true
@@ -18,11 +18,11 @@ resource "databricks_volume" "dbt_object_storage" {
 
 # Staging volume for dbt Cloud staging environment
 resource "databricks_volume" "dbt_staging_object_storage" {
-  name             = "object_storage"
-  catalog_name     = databricks_catalog.main.name
-  schema_name      = databricks_schema.dbt_staging.name
-  volume_type      = "MANAGED"
-  comment          = "Object storage volume for dbt Cloud staging environment"
+  name         = "object_storage"
+  catalog_name = databricks_catalog.main.name
+  schema_name  = databricks_schema.dbt_staging.name
+  volume_type  = "MANAGED"
+  comment      = "Object storage volume for dbt Cloud staging environment"
 
   lifecycle {
     prevent_destroy = true

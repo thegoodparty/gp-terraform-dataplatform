@@ -18,6 +18,15 @@ locals {
     }
   }
 
+  # The general-purpose mart the gp-api application queries directly over SQL,
+  # as its own service principal on its own warehouse. Holds whatever gp-api
+  # needs served from Databricks; today that is the L2 voter-file pass-through.
+  gp_api = {
+    mart           = "gp_api"
+    sp_name        = "gp_api"
+    warehouse_name = "wh-gp-api"
+  }
+
   # Marts that all data users should be able to read.
   # mban2026 is excluded: its reader group also grants write + CREATE_MODEL on
   # the models_mban schema, and it holds DEID voter data scoped to a cohort.
@@ -26,7 +35,9 @@ locals {
   # mart_sales_reverse_etl_readers group (biz-ops, assigned in the console; plus the
   # reverse-ETL service principal once DATA-1840 builds it), not all data users.
   # See DATA-2011.
-  shared_marts = { for k, v in local.marts_map : k => v if k != "mban2026" && k != "sales_reverse_etl" }
+  # gp_api is excluded: it passes the full L2 record through, PII included.
+  # Only the gp-api service principal is in its group.
+  shared_marts = { for k, v in local.marts_map : k => v if k != "mban2026" && k != "sales_reverse_etl" && k != local.gp_api.mart }
 
   # Astro deployment environments
   # Both dev and prod Airflow environments live in our single infrastructure
@@ -88,7 +99,7 @@ locals {
           worker_concurrency = 5
         }
       ]
-      hibernation_schedules   = []
+      hibernation_schedules = []
     }
   }
 }

@@ -102,3 +102,19 @@ output "astro_deployments" {
   }
 }
 
+# =============================================================================
+# gp-api Application Outputs
+# =============================================================================
+
+output "gp_api_service_principal" {
+  description = "Application (client) ID of the gp-api service principal; the OAuth M2M client_id for the app's Databricks connection"
+  value       = databricks_service_principal.gp_api.application_id
+}
+
+output "gp_api_warehouse" {
+  description = "Name and ID of the gp-api SQL warehouse; the ID is the app's JDBC/HTTP path"
+  value = {
+    name = databricks_sql_endpoint.gp_api.name
+    id   = databricks_sql_endpoint.gp_api.id
+  }
+}

@@ -17,3 +17,5 @@ marts:
   - name: sales_reverse_etl
     description: "Sales/biz-ops outbound (reverse-ETL) sendable marts: candidate export feeds for HubSpot and TechSpeed. PII-bearing; read access is scoped to the mart_sales_reverse_etl_readers group, not all data users (excluded from shared_marts). See DATA-2011."
 
+  - name: gp_api
+    description: "General-purpose mart served directly over SQL to the gp-api application. Currently a pass-through of the L2 nationwide voter file, which carries the full L2 record including PII; read access is scoped to the mart_gp_api_readers group, not all data users (excluded from shared_marts)."

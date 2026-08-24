@@ -127,3 +127,21 @@ resource "databricks_mws_permission_assignment" "agent" {
   principal_id = databricks_service_principal.agent[each.key].id
   permissions  = ["USER"]
 }
+
+# The gp-api application's read-only principal for direct SQL against its
+# mart. OAuth M2M credentials generated manually; see README.
+resource "databricks_service_principal" "gp_api" {
+  provider     = databricks.account
+  display_name = local.gp_api.sp_name
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "databricks_mws_permission_assignment" "gp_api" {
+  provider     = databricks.account
+  workspace_id = var.workspace_id
+  principal_id = databricks_service_principal.gp_api.id
+  permissions  = ["USER"]
+}
