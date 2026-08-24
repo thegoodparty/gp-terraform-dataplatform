@@ -117,7 +117,7 @@ resource "aws_iam_role_policy" "loader_uc" {
 # --- UC storage credential + external location ---------------------------------
 
 resource "databricks_storage_credential" "loader" {
-  name    = local.loader_storage_credential_name
+  name         = local.loader_storage_credential_name
   comment      = "People-API loader bucket access"
   force_update = true
   aws_iam_role {
