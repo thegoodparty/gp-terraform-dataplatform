@@ -62,10 +62,10 @@ resource "databricks_sql_endpoint" "sigma" {
 # keeping app-serving traffic off the shared analytics and agent compute.
 resource "databricks_sql_endpoint" "gp_api" {
   name                      = local.gp_api.warehouse_name
-  cluster_size              = "Small"
+  cluster_size              = "X-Small"
   enable_serverless_compute = true
   warehouse_type            = "PRO" # required for serverless warehouses; there is no SERVERLESS type
-  auto_stop_mins            = 5
+  auto_stop_mins            = 2
   max_num_clusters          = 1
 
   tags {
