@@ -64,6 +64,17 @@ locals {
           min_worker_count   = 0
           max_worker_count   = 10
           worker_concurrency = 5
+        },
+        {
+          # sync_election_api routes its Databricks-to-Postgres load tasks here.
+          # Each peaks near 400 MB, so an A5 fits two; the queue scales out on
+          # queued-task count instead of packing more onto one worker.
+          name               = "election-api-sync"
+          is_default         = false
+          astro_machine      = "A5"
+          min_worker_count   = 0
+          max_worker_count   = 7
+          worker_concurrency = 2
         }
       ]
       hibernation_schedules = [
@@ -97,6 +108,17 @@ locals {
           min_worker_count   = 0
           max_worker_count   = 10
           worker_concurrency = 5
+        },
+        {
+          # sync_election_api routes its Databricks-to-Postgres load tasks here.
+          # Each peaks near 400 MB, so an A5 fits two; the queue scales out on
+          # queued-task count instead of packing more onto one worker.
+          name               = "election-api-sync"
+          is_default         = false
+          astro_machine      = "A5"
+          min_worker_count   = 0
+          max_worker_count   = 7
+          worker_concurrency = 2
         }
       ]
       hibernation_schedules = []
