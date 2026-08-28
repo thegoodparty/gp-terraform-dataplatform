@@ -66,12 +66,20 @@ resource "databricks_sql_endpoint" "sigma" {
 # at once rather than how fast one runs. X-Small and Medium measured within 2%
 # of each other on warm single-query latency, while p95 across 25 concurrent
 # reads went 9.5s to 4.3s. So keep the cluster small and let it add clusters.
+#
+# auto_stop_mins is deliberately well above the 2 minutes this started at. Measured
+# against query history and warehouse events, at 2 minutes the warehouse fully stopped
+# and restarted dozens of times a day with a median idle of barely over the threshold
+# -- it was shutting down seconds before traffic returned. Nearly every
+# compute-provisioning wait gp-api paid was on a warehouse sitting at zero clusters,
+# and provisioning dominates total wait time, so the idle compute this holds costs far
+# less than the cold starts it avoids.
 resource "databricks_sql_endpoint" "gp_api" {
   name                      = local.gp_api.warehouse_name
   cluster_size              = "X-Small"
   enable_serverless_compute = true
   warehouse_type            = "PRO" # required for serverless warehouses; there is no SERVERLESS type
-  auto_stop_mins            = 2
+  auto_stop_mins            = 10
   max_num_clusters          = 4
 
   tags {
