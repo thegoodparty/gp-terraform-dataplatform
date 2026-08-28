@@ -14,6 +14,7 @@
 locals {
   l2_voter_files_bucket = "goodparty-warehouse-databricks"
   l2_voter_files_prefix = "l2_data"
+  l2_voter_files_tags   = { Project = "gp-l2-voter-files" }
 }
 
 resource "aws_iam_role" "l2_voter_files" {
@@ -21,26 +22,9 @@ resource "aws_iam_role" "l2_voter_files" {
 
   name        = "gp-l2-voter-files-${each.key}"
   description = "Assumed by the L2 voter-file DAG to stage SFTP archives in S3 (${each.key})."
-  tags        = { Project = "gp-l2-voter-files" }
+  tags        = local.l2_voter_files_tags
 
-  # Same trust shape as gp-people-rds-admin: only this environment's Astro workload
-  # identity, gated by the per-env sts:ExternalId. The nonce is shared with that role
-  # because the same deployment presents it, so a second one would isolate nothing.
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect    = "Allow"
-        Principal = { AWS = each.value }
-        Action    = "sts:AssumeRole"
-        Condition = {
-          StringEquals = {
-            "sts:ExternalId" = var.loader_rds_admin_external_ids[each.key]
-          }
-        }
-      },
-    ]
-  })
+  assume_role_policy = local.astro_assume_role_policy[each.key]
 }
 
 resource "aws_iam_role_policy" "l2_voter_files" {
@@ -56,6 +40,11 @@ resource "aws_iam_role_policy" "l2_voter_files" {
         Effect   = "Allow"
         Action   = "s3:ListBucket"
         Resource = "arn:aws:s3:::${local.l2_voter_files_bucket}"
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["${local.l2_voter_files_prefix}/*"]
+          }
+        }
       },
       {
         # No DeleteObject: the DAG only ever adds staged snapshots, and pruning old
@@ -73,9 +62,4 @@ resource "aws_iam_role_policy" "l2_voter_files" {
       },
     ]
   })
-}
-
-output "l2_voter_files_role_arns" {
-  description = "Set as role_arn in each environment's aws_default Airflow connection extra."
-  value       = { for env, role in aws_iam_role.l2_voter_files : env => role.arn }
 }

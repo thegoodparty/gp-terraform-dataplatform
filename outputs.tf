@@ -44,6 +44,15 @@ output "rds_s3_import_role_arn" {
 }
 
 # =============================================================================
+# L2 Voter-File Staging Outputs
+# =============================================================================
+
+output "l2_voter_files_role_arns" {
+  description = "Set as role_arn in each environment's aws_default Airflow connection extra."
+  value       = { for env, role in aws_iam_role.l2_voter_files : env => role.arn }
+}
+
+# =============================================================================
 # Product Agent Outputs
 # =============================================================================
 
@@ -101,4 +110,5 @@ output "astro_deployments" {
     }
   }
 }
+
 

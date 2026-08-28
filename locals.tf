@@ -35,6 +35,28 @@ locals {
     prod = "arn:aws:iam::111928029897:role/astro-exothermic-astronaut-9119"
   }
 
+  # Trust policy shared by every AWS role Airflow assumes: only this environment's
+  # workload identity, gated by the per-env sts:ExternalId (confused-deputy guard).
+  # The nonce is shared across roles in a deployment because it's the deployment
+  # that presents it, not the role, so a per-role nonce would isolate nothing.
+  astro_assume_role_policy = {
+    for env, principal in local.astro_workload_identities : env => jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Effect    = "Allow"
+          Principal = { AWS = principal }
+          Action    = "sts:AssumeRole"
+          Condition = {
+            StringEquals = {
+              "sts:ExternalId" = var.astro_workload_external_ids[env]
+            }
+          }
+        },
+      ]
+    })
+  }
+
   # A dedicated queue for the L2 voter-file sync. Its tasks download a whole archive
   # (largest ~7 GB) to the worker's fixed 10 GiB of ephemeral storage, so a second
   # concurrent task on the same worker would exhaust the disk.

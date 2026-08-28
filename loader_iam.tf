@@ -40,24 +40,7 @@ resource "aws_iam_role" "rds_admin" {
   description = "Assumed by Airflow DAGs to provision and manage people-api RDS resources (${each.key})."
   tags        = local.loader_tags
 
-  # Trust only the environment's Astro workload identity, gated by the per-env
-  # sts:ExternalId (confused-deputy guard). The external id is a secret supplied
-  # via var.loader_rds_admin_external_ids.
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect    = "Allow"
-        Principal = { AWS = each.value }
-        Action    = "sts:AssumeRole"
-        Condition = {
-          StringEquals = {
-            "sts:ExternalId" = var.loader_rds_admin_external_ids[each.key]
-          }
-        }
-      },
-    ]
-  })
+  assume_role_policy = local.astro_assume_role_policy[each.key]
 }
 
 # RDS create/modify + PassRole for the rds-s3-import role. Scoped to the loader's
