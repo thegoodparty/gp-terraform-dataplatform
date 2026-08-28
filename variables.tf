@@ -124,8 +124,10 @@ variable "gp_api_cluster_node_type" {
     with local NVMe (m6id, m5d, r6id, i3) for the disk cache; enable_elastic_disk
     is off in clusters.tf on that assumption.
 
-    Going past 4 cores erases the saving. An 8-core node costs about what the
-    serverless warehouse does today.
+    Measured rates on this account: m5d.large 0.305 DBU/hr, i3.xlarge 1.0. The
+    default works out near $434/month all in. Sizing up to 8 cores roughly
+    doubles that and still lands well under what the serverless warehouse costs
+    today, so there is room to grow if concurrency turns out to be the limit.
   EOT
   type        = string
   default     = "m6id.xlarge"
