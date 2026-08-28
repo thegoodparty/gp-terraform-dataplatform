@@ -419,6 +419,18 @@ resource "databricks_permissions" "agent_warehouse" {
   depends_on = [databricks_mws_permission_assignment.agent]
 }
 
+# CAN_USE on the gp-api application warehouse (databricks_sql_endpoint.gp_api).
+resource "databricks_permissions" "sql_warehouse_gp_api" {
+  sql_endpoint_id = databricks_sql_endpoint.gp_api.id
+
+  access_control {
+    service_principal_name = databricks_service_principal.gp_api.application_id
+    permission_level       = "CAN_USE"
+  }
+
+  depends_on = [databricks_mws_permission_assignment.gp_api]
+}
+
 # =============================================================================
 # Compute Cluster Permissions
 # =============================================================================
