@@ -460,6 +460,20 @@ resource "databricks_permissions" "cluster_classic" {
   }
 }
 
+# CAN_ATTACH_TO on the gp-api serving cluster (databricks_cluster.gp_api_serving).
+# The SP keeps its CAN_USE on wh-gp-api as well, so the app can be switched
+# between the two compute paths without a Terraform change.
+resource "databricks_permissions" "cluster_gp_api_serving" {
+  cluster_id = databricks_cluster.gp_api_serving.id
+
+  access_control {
+    service_principal_name = databricks_service_principal.gp_api.application_id
+    permission_level       = "CAN_ATTACH_TO"
+  }
+
+  depends_on = [databricks_mws_permission_assignment.gp_api]
+}
+
 # =============================================================================
 # Token (PAT) Permissions
 # =============================================================================

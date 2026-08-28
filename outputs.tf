@@ -118,3 +118,17 @@ output "gp_api_warehouse" {
     id   = databricks_sql_endpoint.gp_api.id
   }
 }
+
+output "gp_api_serving_cluster" {
+  description = <<-EOT
+    The always-on classic cluster that gp-api can use instead of wh-gp-api.
+    Clusters and warehouses use different HTTP path formats, so the app needs
+    the http_path below rather than a bare cluster ID.
+  EOT
+  value = {
+    name      = databricks_cluster.gp_api_serving.cluster_name
+    id        = databricks_cluster.gp_api_serving.id
+    node_type = databricks_cluster.gp_api_serving.node_type_id
+    http_path = "sql/protocolv1/o/${var.workspace_id}/${databricks_cluster.gp_api_serving.id}"
+  }
+}

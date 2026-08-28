@@ -107,6 +107,44 @@ variable "loader_db_cluster_prefix" {
   default     = "gp-people-db"
 }
 
+# =============================================================================
+# gp-api always-on serving cluster
+# =============================================================================
+# Both knobs exist because this cluster is an experiment. Sizing it is meant to
+# be a one-line change so we can retest without editing the resource.
+
+variable "gp_api_cluster_node_type" {
+  description = <<-EOT
+    Instance type for the single-node gp-api serving cluster. The node runs
+    around the clock, so this is the cost lever: DBUs scale with instance size
+    and are billed on top of the EC2 hour, and DBUs are the larger share.
+
+    The default is a modern 4-core instance because compilation, which is driver
+    CPU work, dominates median latency more than execution does. Prefer a family
+    with local NVMe (m6id, m5d, r6id, i3) for the disk cache; enable_elastic_disk
+    is off in clusters.tf on that assumption.
+
+    Going past 4 cores erases the saving. An 8-core node costs about what the
+    serverless warehouse does today.
+  EOT
+  type        = string
+  default     = "m6id.xlarge"
+}
+
+variable "gp_api_cluster_photon" {
+  description = <<-EOT
+    Whether the gp-api serving cluster runs Photon. Photon roughly doubles DBU
+    consumption, which cancels most of the saving this cluster is meant to test,
+    so it starts off. The query history supports that default: execution is a
+    small share of total latency and nothing spills.
+
+    Turn it on if warm execution, rather than cold start or queueing, turns out
+    to be what users feel.
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "loader_rds_admin_external_ids" {
   description = <<-EOT
     sts:ExternalId the Astro workload-identity role must present when assuming

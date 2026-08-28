@@ -25,6 +25,7 @@ locals {
     mart           = "gp_api"
     sp_name        = "gp_api"
     warehouse_name = "wh-gp-api"
+    cluster_name   = "gp-api-serving"
   }
 
   # Marts that all data users should be able to read.
