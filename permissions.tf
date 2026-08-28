@@ -460,15 +460,26 @@ resource "databricks_permissions" "cluster_classic" {
   }
 }
 
-# CAN_ATTACH_TO on the gp-api serving cluster (databricks_cluster.gp_api_serving).
+# Access to the gp-api serving cluster (databricks_cluster.gp_api_serving).
 # The SP keeps its CAN_USE on wh-gp-api as well, so the app can be switched
 # between the two compute paths without a Terraform change.
+#
+# This resource is authoritative for the cluster, so anyone granted access in the
+# UI loses it on the next apply. Add principals here instead.
 resource "databricks_permissions" "cluster_gp_api_serving" {
   cluster_id = databricks_cluster.gp_api_serving.id
 
   access_control {
     service_principal_name = databricks_service_principal.gp_api.application_id
     permission_level       = "CAN_ATTACH_TO"
+  }
+
+  # Human access for comparing the cluster against wh-gp-api during the trial.
+  # CAN_RESTART rather than CAN_ATTACH_TO so the cluster can be started again
+  # after a manual stop without waiting on an admin.
+  access_control {
+    user_name        = "swain@goodparty.org"
+    permission_level = "CAN_RESTART"
   }
 
   depends_on = [databricks_mws_permission_assignment.gp_api]
