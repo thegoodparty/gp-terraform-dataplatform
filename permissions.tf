@@ -422,45 +422,6 @@ resource "databricks_permissions" "sql_warehouse_gp_api" {
 }
 
 # =============================================================================
-# Compute Cluster Permissions
-# =============================================================================
-# Grant permissions on the shared compute cluster (classic-cluster)
-
-data "databricks_cluster" "classic" {
-  cluster_name = "classic-cluster"
-}
-
-resource "databricks_permissions" "cluster_classic" {
-  cluster_id = data.databricks_cluster.classic.id
-
-  # Note: admins group has CAN_MANAGE by default (built-in, cannot be modified)
-
-  access_control {
-    group_name       = data.databricks_group.dbt_users.display_name
-    permission_level = "CAN_RESTART"
-  }
-
-  access_control {
-    service_principal_name = data.databricks_service_principal.airbyte.application_id
-    permission_level       = "CAN_RESTART"
-  }
-
-  # Airflow service principals
-  dynamic "access_control" {
-    for_each = databricks_service_principal.airflow
-    content {
-      service_principal_name = access_control.value.application_id
-      permission_level       = "CAN_RESTART"
-    }
-  }
-
-  access_control {
-    service_principal_name = databricks_service_principal.dbt_cloud_staging.application_id
-    permission_level       = "CAN_RESTART"
-  }
-}
-
-# =============================================================================
 # Token (PAT) Permissions
 # =============================================================================
 # Manage who can create and use Personal Access Tokens
