@@ -31,50 +31,22 @@ locals {
   # a workspace-scoped Astro env var shared by both deployments (no per-env override),
   # so a single value covers dev and prod.
   loader_db_subnet_group = "api-master-rds-subnet-group"
-
-  # Per-environment inputs. astro_principal is the Astronomer-managed workload
-  # identity role for that deployment (Deployment > Details > Workload Identity).
-  loader_rds_admin = {
-    dev = {
-      astro_principal = "arn:aws:iam::111928029897:role/astro-galactian-element-5125"
-    }
-    prod = {
-      astro_principal = "arn:aws:iam::111928029897:role/astro-exothermic-astronaut-9119"
-    }
-  }
 }
 
 resource "aws_iam_role" "rds_admin" {
-  for_each = local.loader_rds_admin
+  for_each = local.astro_workload_identities
 
   name        = "gp-people-rds-admin-${each.key}"
   description = "Assumed by Airflow DAGs to provision and manage people-api RDS resources (${each.key})."
   tags        = local.loader_tags
 
-  # Trust only the environment's Astro workload identity, gated by the per-env
-  # sts:ExternalId (confused-deputy guard). The external id is a secret supplied
-  # via var.loader_rds_admin_external_ids.
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect    = "Allow"
-        Principal = { AWS = each.value.astro_principal }
-        Action    = "sts:AssumeRole"
-        Condition = {
-          StringEquals = {
-            "sts:ExternalId" = var.loader_rds_admin_external_ids[each.key]
-          }
-        }
-      },
-    ]
-  })
+  assume_role_policy = local.astro_assume_role_policy[each.key]
 }
 
 # RDS create/modify + PassRole for the rds-s3-import role. Scoped to the loader's
 # own clusters and tagged for this environment.
 resource "aws_iam_role_policy" "rds_admin" {
-  for_each = local.loader_rds_admin
+  for_each = local.astro_workload_identities
 
   name = "rds-admin"
   role = aws_iam_role.rds_admin[each.key].id
@@ -134,7 +106,7 @@ resource "aws_iam_role_policy" "rds_admin" {
 # S3 access to the loader bucket, SSM read/write on this env's connection-string
 # parameters, and KMS decrypt of those SecureStrings via SSM.
 resource "aws_iam_role_policy" "loader_s3_ssm" {
-  for_each = local.loader_rds_admin
+  for_each = local.astro_workload_identities
 
   name = "loader-s3-ssm"
   role = aws_iam_role.rds_admin[each.key].id
@@ -190,7 +162,7 @@ resource "aws_iam_role_policy" "loader_s3_ssm" {
 # RDS describe/create/delete for the provision + resize + teardown steps, PassRole
 # for the rds-s3-import role Aurora COPY assumes, and use of the cluster CMK.
 resource "aws_iam_role_policy" "loader_provision" {
-  for_each = local.loader_rds_admin
+  for_each = local.astro_workload_identities
 
   name = "loader-provision"
   role = aws_iam_role.rds_admin[each.key].id

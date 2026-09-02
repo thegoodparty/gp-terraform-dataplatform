@@ -39,6 +39,47 @@ locals {
   # Only the gp-api service principal is in its group.
   shared_marts = { for k, v in local.marts_map : k => v if k != "mban2026" && k != "sales_reverse_etl" && k != local.gp_api.mart }
 
+  # The Astronomer-managed workload identity per deployment (Deployment > Details >
+  # Workload Identity). Every AWS role Airflow assumes trusts these.
+  astro_workload_identities = {
+    dev  = "arn:aws:iam::111928029897:role/astro-galactian-element-5125"
+    prod = "arn:aws:iam::111928029897:role/astro-exothermic-astronaut-9119"
+  }
+
+  # Trust policy shared by every AWS role Airflow assumes: only this environment's
+  # workload identity, gated by the per-env sts:ExternalId (confused-deputy guard).
+  # The nonce is shared across roles in a deployment because it's the deployment
+  # that presents it, not the role, so a per-role nonce would isolate nothing.
+  astro_assume_role_policy = {
+    for env, principal in local.astro_workload_identities : env => jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Effect    = "Allow"
+          Principal = { AWS = principal }
+          Action    = "sts:AssumeRole"
+          Condition = {
+            StringEquals = {
+              "sts:ExternalId" = var.astro_workload_external_ids[env]
+            }
+          }
+        },
+      ]
+    })
+  }
+
+  # A dedicated queue for the L2 voter-file sync. Its tasks download a whole archive
+  # (largest ~7 GB) to the worker's fixed 10 GiB of ephemeral storage, so a second
+  # concurrent task on the same worker would exhaust the disk.
+  l2_voter_files_worker_queue = {
+    name               = "l2-voter-files"
+    is_default         = false
+    astro_machine      = "A5"
+    min_worker_count   = 0
+    max_worker_count   = 1
+    worker_concurrency = 1
+  }
+
   # Astro deployment environments
   # Both dev and prod Airflow environments live in our single infrastructure
   astro_environments = {
@@ -65,6 +106,7 @@ locals {
           max_worker_count   = 10
           worker_concurrency = 5
         },
+        local.l2_voter_files_worker_queue,
         {
           # sync_election_api routes its Databricks-to-Postgres load tasks here.
           # Each peaks near 400 MB, so an A5 fits two; the queue scales out on
@@ -109,6 +151,7 @@ locals {
           max_worker_count   = 10
           worker_concurrency = 5
         },
+        local.l2_voter_files_worker_queue,
         {
           # sync_election_api routes its Databricks-to-Postgres load tasks here.
           # Each peaks near 400 MB, so an A5 fits two; the queue scales out on
