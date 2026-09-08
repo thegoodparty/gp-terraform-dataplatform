@@ -17,6 +17,14 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
   }
 
+  # reverse_etl is a standalone schema (not in config/marts.yaml), so its readers
+  # group needs catalog access granted directly rather than picked up by the
+  # mart_readers_account dynamic block above.
+  grant {
+    principal  = databricks_group.reverse_etl_readers.display_name
+    privileges = ["USE_CATALOG"]
+  }
+
   # dbt_cloud service principal gets full access across entire catalog
   grant {
     principal  = data.databricks_service_principal.dbt_cloud.application_id
@@ -99,7 +107,8 @@ resource "databricks_grants" "catalog_main" {
 
   depends_on = [
     databricks_group.mart_readers_account,
-    databricks_group.dbt_developers_account
+    databricks_group.dbt_developers_account,
+    databricks_group.reverse_etl_readers
   ]
 }
 
@@ -335,6 +344,35 @@ resource "databricks_grants" "exports_zapier_schema" {
     ]
   }
 
+}
+
+# data_users is deliberately not granted here (PII posture, as with mart_sales_reverse_etl).
+# The airflow service principal is not listed either: it already inherits
+# USE_SCHEMA + SELECT from its catalog-level grant above.
+resource "databricks_grants" "reverse_etl_schema" {
+  schema = databricks_schema.reverse_etl.id
+
+  grant {
+    principal  = databricks_group.reverse_etl_readers.display_name
+    privileges = ["USE_SCHEMA", "SELECT"]
+  }
+
+  grant {
+    principal  = databricks_group.dbt_developers_account.display_name
+    privileges = ["USE_SCHEMA", "SELECT"]
+  }
+}
+
+# sent_log INSERT-only for the reverse-ETL job. SELECT is not restated here for the
+# same reason as above; UPDATE/DELETE are deliberately withheld, so force-resend is a
+# break-glass admin delete rather than a job capability.
+resource "databricks_grants" "reverse_etl_sent_log_table" {
+  table = databricks_sql_table.sent_log.id
+
+  grant {
+    principal  = databricks_service_principal.airflow["airflow"].application_id
+    privileges = ["INSERT"]
+  }
 }
 
 # =============================================================================

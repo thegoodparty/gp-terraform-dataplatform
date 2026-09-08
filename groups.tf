@@ -200,9 +200,20 @@ resource "databricks_group_member" "agent_in_mart_readers" {
 # for_each from config/marts.yaml) is intentionally NOT in local.shared_marts:
 # mart_sales_reverse_etl holds PII-bearing candidate export feeds, so the "data users"
 # group is not auto-added. Membership is managed in the Databricks console (biz-ops).
-# When DATA-1840 creates the reverse-ETL service principal, add it here as a
-# databricks_group_member of mart_readers_account["sales_reverse_etl"] (unless it is an
-# Airflow SP, which already inherits catalog-level SELECT).
+# The reverse-ETL job reads this schema as the airflow service principal, which
+# already inherits catalog-level SELECT, so it is not added as a group member here.
+
+# Reverse-ETL send-log schema readers (goodparty_data_catalog.reverse_etl). PII-scoped
+# like mart_sales_reverse_etl_readers above: a Terraform-managed group with membership
+# assigned in the console, not auto-joined by any data-users rollup.
+resource "databricks_group" "reverse_etl_readers" {
+  provider     = databricks.account
+  display_name = "reverse_etl_readers"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
 
 # Assign account groups to workspace
 # This makes the account-level groups visible and usable within the workspace
@@ -212,6 +223,14 @@ resource "databricks_mws_permission_assignment" "genie_civics" {
   provider     = databricks.account
   workspace_id = var.workspace_id
   principal_id = databricks_group.genie_civics.id
+  permissions  = ["USER"]
+}
+
+# Assign reverse_etl_readers to workspace
+resource "databricks_mws_permission_assignment" "reverse_etl_readers" {
+  provider     = databricks.account
+  workspace_id = var.workspace_id
+  principal_id = databricks_group.reverse_etl_readers.id
   permissions  = ["USER"]
 }
 

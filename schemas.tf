@@ -76,6 +76,68 @@ resource "databricks_schema" "model_predictions" {
   depends_on = [databricks_grants.catalog_main]
 }
 
+# Reverse-ETL send log. Standalone (not a config/marts.yaml mart): it holds only the
+# sent_log table and its CSV preview volume, not a queryable mart.
+resource "databricks_schema" "reverse_etl" {
+  catalog_name = databricks_catalog.main.name
+  name         = "reverse_etl"
+  comment      = "Reverse-ETL send log: records every payload delivered to a destination. PII-bearing (contact payloads), so access is scoped rather than rolled into shared_marts, following the mart_sales_reverse_etl posture."
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "reverse_etl"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [databricks_grants.catalog_main]
+}
+
+# Terraform owns this table's DDL exclusively: the daily reverse-ETL job only reads
+# and appends rows, so a missing table fails the run instead of silently re-sending
+# everyone. Four columns is deliberate (batch and record ids were considered and
+# cut); extend only for a real need, not by habit.
+resource "databricks_sql_table" "sent_log" {
+  name               = "sent_log"
+  catalog_name       = databricks_catalog.main.name
+  schema_name        = databricks_schema.reverse_etl.name
+  table_type         = "MANAGED"
+  data_source_format = "DELTA"
+  warehouse_id       = data.databricks_sql_warehouse.starter.id
+  cluster_keys       = ["flow_id", "tracking_key"]
+  comment            = "Every reverse-ETL delivery, one row per send. Append-only for the job; deletes are a break-glass admin action."
+
+  column {
+    name     = "flow_id"
+    type     = "STRING"
+    nullable = false
+  }
+
+  column {
+    name     = "tracking_key"
+    type     = "STRING"
+    nullable = false
+  }
+
+  column {
+    name     = "payload"
+    type     = "STRING"
+    nullable = false
+  }
+
+  column {
+    name     = "sent_at"
+    type     = "TIMESTAMP"
+    nullable = false
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 # Dynamic mart schemas from YAML configuration
 resource "databricks_schema" "marts" {
   for_each = local.marts_map
