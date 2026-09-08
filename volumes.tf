@@ -70,14 +70,19 @@ resource "databricks_grants" "dbt_staging_object_storage_volume" {
   }
 }
 
-# Grants on reverse_etl.csv_preview volume: the job reads and writes previews, the
-# data team can inspect what would have gone out.
+# Grants on reverse_etl.csv_preview volume: the job reads and writes previews; the
+# sales reverse-ETL readers and the data team can inspect what would have gone out.
 resource "databricks_grants" "reverse_etl_csv_preview_volume" {
   volume = databricks_volume.reverse_etl_csv_preview.id
 
   grant {
     principal  = databricks_service_principal.airflow["airflow"].application_id
     privileges = ["READ_VOLUME", "WRITE_VOLUME"]
+  }
+
+  grant {
+    principal  = databricks_group.mart_readers_account["sales_reverse_etl"].display_name
+    privileges = ["READ_VOLUME"]
   }
 
   grant {

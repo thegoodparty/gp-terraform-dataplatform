@@ -81,7 +81,7 @@ resource "databricks_schema" "model_predictions" {
 resource "databricks_schema" "reverse_etl" {
   catalog_name = databricks_catalog.main.name
   name         = "reverse_etl"
-  comment      = "Reverse-ETL send log: records every payload delivered to a destination. PII-bearing (contact payloads), so access is scoped rather than rolled into shared_marts, following the mart_sales_reverse_etl posture."
+  comment      = "Reverse-ETL send log: records every payload delivered to a destination. Access is scoped to the sales reverse-ETL readers group rather than rolled into shared_marts, matching that mart's posture."
 
   properties = {
     managed_by = "terraform"

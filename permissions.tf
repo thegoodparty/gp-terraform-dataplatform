@@ -17,14 +17,6 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
   }
 
-  # reverse_etl is a standalone schema (not in config/marts.yaml), so its readers
-  # group needs catalog access granted directly rather than picked up by the
-  # mart_readers_account dynamic block above.
-  grant {
-    principal  = databricks_group.reverse_etl_readers.display_name
-    privileges = ["USE_CATALOG"]
-  }
-
   # dbt_cloud service principal gets full access across entire catalog
   grant {
     principal  = data.databricks_service_principal.dbt_cloud.application_id
@@ -107,8 +99,7 @@ resource "databricks_grants" "catalog_main" {
 
   depends_on = [
     databricks_group.mart_readers_account,
-    databricks_group.dbt_developers_account,
-    databricks_group.reverse_etl_readers
+    databricks_group.dbt_developers_account
   ]
 }
 
@@ -346,14 +337,16 @@ resource "databricks_grants" "exports_zapier_schema" {
 
 }
 
-# data_users is deliberately not granted here (PII posture, as with mart_sales_reverse_etl).
-# The airflow service principal is not listed either: it already inherits
-# USE_SCHEMA + SELECT from its catalog-level grant above.
+# Read reuses the existing sales reverse-ETL readers group rather than a dedicated
+# one: same audience today, split later if they diverge. data_users is deliberately
+# not granted, matching that mart's scoped posture. The airflow service principal is
+# not listed either: it already inherits USE_SCHEMA + SELECT from its catalog-level
+# grant above.
 resource "databricks_grants" "reverse_etl_schema" {
   schema = databricks_schema.reverse_etl.id
 
   grant {
-    principal  = databricks_group.reverse_etl_readers.display_name
+    principal  = databricks_group.mart_readers_account["sales_reverse_etl"].display_name
     privileges = ["USE_SCHEMA", "SELECT"]
   }
 
