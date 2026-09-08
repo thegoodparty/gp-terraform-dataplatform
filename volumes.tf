@@ -31,9 +31,8 @@ resource "databricks_volume" "dbt_staging_object_storage" {
   depends_on = [databricks_grants.dbt_staging_schema]
 }
 
-# CSV preview output for the reverse-ETL app's csv destination (a preview run, never
-# logged as sent). Schema-level USE_SCHEMA/SELECT do not cover volume file access, so
-# this needs its own grants below.
+# Preview-run output for the app's csv destination. Volume file access is not covered
+# by schema USE_SCHEMA/SELECT, hence the explicit grants below.
 resource "databricks_volume" "reverse_etl_csv_preview" {
   name         = "csv_preview"
   catalog_name = databricks_catalog.main.name
@@ -70,8 +69,6 @@ resource "databricks_grants" "dbt_staging_object_storage_volume" {
   }
 }
 
-# Grants on reverse_etl.csv_preview volume: the job reads and writes previews; the
-# sales reverse-ETL readers and the data team can inspect what would have gone out.
 resource "databricks_grants" "reverse_etl_csv_preview_volume" {
   volume = databricks_volume.reverse_etl_csv_preview.id
 

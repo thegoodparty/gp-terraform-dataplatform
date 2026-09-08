@@ -76,8 +76,7 @@ resource "databricks_schema" "model_predictions" {
   depends_on = [databricks_grants.catalog_main]
 }
 
-# Reverse-ETL send log. Standalone (not a config/marts.yaml mart): it holds only the
-# sent_log table and its CSV preview volume, not a queryable mart.
+# Standalone on purpose (not a config/marts.yaml mart): a send log, not a queryable mart.
 resource "databricks_schema" "reverse_etl" {
   catalog_name = databricks_catalog.main.name
   name         = "reverse_etl"
@@ -95,10 +94,8 @@ resource "databricks_schema" "reverse_etl" {
   depends_on = [databricks_grants.catalog_main]
 }
 
-# Terraform owns this table's DDL exclusively: the daily reverse-ETL job only reads
-# and appends rows, so a missing table fails the run instead of silently re-sending
-# everyone. Four columns is deliberate (batch and record ids were considered and
-# cut); extend only for a real need, not by habit.
+# Terraform owns this DDL exclusively: the job only appends, so a missing table fails
+# the run instead of silently re-sending everyone. Four columns is deliberate.
 resource "databricks_sql_table" "sent_log" {
   name               = "sent_log"
   catalog_name       = databricks_catalog.main.name

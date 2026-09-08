@@ -337,11 +337,8 @@ resource "databricks_grants" "exports_zapier_schema" {
 
 }
 
-# Read reuses the existing sales reverse-ETL readers group rather than a dedicated
-# one: same audience today, split later if they diverge. data_users is deliberately
-# not granted, matching that mart's scoped posture. The airflow service principal is
-# not listed either: it already inherits USE_SCHEMA + SELECT from its catalog-level
-# grant above.
+# data_users is deliberately not granted (scoped like mart_sales_reverse_etl). The
+# airflow SP is not listed: it inherits USE_SCHEMA + SELECT from its catalog grant.
 resource "databricks_grants" "reverse_etl_schema" {
   schema = databricks_schema.reverse_etl.id
 
@@ -356,9 +353,8 @@ resource "databricks_grants" "reverse_etl_schema" {
   }
 }
 
-# sent_log INSERT-only for the reverse-ETL job. SELECT is not restated here for the
-# same reason as above; UPDATE/DELETE are deliberately withheld, so force-resend is a
-# break-glass admin delete rather than a job capability.
+# INSERT only: the job appends and never rewrites history; deletes are a break-glass
+# admin action. SELECT comes from the SP's catalog-level grant.
 resource "databricks_grants" "reverse_etl_sent_log_table" {
   table = databricks_sql_table.sent_log.id
 
