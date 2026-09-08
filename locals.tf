@@ -79,7 +79,7 @@ locals {
       ]
       hibernation_schedules = [
         {
-          hibernate_at_cron = "0 1 * * 2,3,4,5,6"
+          hibernate_at_cron = "0 3 * * 2,3,4,5,6"
           wake_at_cron      = "0 14 * * 1,2,3,4,5"
           description       = "Hibernate overnight, wake on weekday afternoons UTC"
           is_enabled        = true
