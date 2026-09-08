@@ -232,10 +232,11 @@ resource "databricks_mws_permission_assignment" "dbt_developers" {
   permissions  = ["USER"]
 }
 
-# The gp-api reader SP reads only the gp_api mart, via that mart's reader group.
+# The gp-api reader SP reads the gp_api mart via that mart's reader group.
 # Inherits: USE_CATALOG (via catalog_main),
 #           USE_SCHEMA + SELECT (via mart_schemas)
-# SQL warehouse CAN_USE on wh-gp-api is granted in permissions.tf.
+# SQL warehouse CAN_USE on wh-gp-api, plus the interim grants on the
+# m_people_api__* serving tables, are in permissions.tf.
 resource "databricks_group_member" "gp_api_in_mart_readers" {
   provider  = databricks.account
   group_id  = databricks_group.mart_readers_account[local.gp_api.mart].id
