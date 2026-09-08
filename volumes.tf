@@ -31,20 +31,6 @@ resource "databricks_volume" "dbt_staging_object_storage" {
   depends_on = [databricks_grants.dbt_staging_schema]
 }
 
-# Preview-run output for the app's csv destination. Volume file access is not covered
-# by schema USE_SCHEMA/SELECT, hence the explicit grants below.
-resource "databricks_volume" "reverse_etl_csv_preview" {
-  name         = "csv_preview"
-  catalog_name = databricks_catalog.main.name
-  schema_name  = databricks_schema.reverse_etl.name
-  volume_type  = "MANAGED"
-  comment      = "Reverse-ETL CSV preview output. Preview and sandbox runs only; never a substitute for sent_log."
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
 # =============================================================================
 # Volume Grants
 # =============================================================================
@@ -66,24 +52,5 @@ resource "databricks_grants" "dbt_staging_object_storage_volume" {
   grant {
     principal  = databricks_service_principal.dbt_cloud_staging.application_id
     privileges = ["READ_VOLUME", "WRITE_VOLUME"]
-  }
-}
-
-resource "databricks_grants" "reverse_etl_csv_preview_volume" {
-  volume = databricks_volume.reverse_etl_csv_preview.id
-
-  grant {
-    principal  = databricks_service_principal.airflow["airflow"].application_id
-    privileges = ["READ_VOLUME", "WRITE_VOLUME"]
-  }
-
-  grant {
-    principal  = databricks_group.mart_readers_account["sales_reverse_etl"].display_name
-    privileges = ["READ_VOLUME"]
-  }
-
-  grant {
-    principal  = databricks_group.dbt_developers_account.display_name
-    privileges = ["READ_VOLUME"]
   }
 }

@@ -201,8 +201,7 @@ resource "databricks_group_member" "agent_in_mart_readers" {
 # mart_sales_reverse_etl holds PII-bearing candidate export feeds, so the "data users"
 # group is not auto-added. Membership is managed in the Databricks console (biz-ops).
 # The reverse-ETL job reads it as the airflow service principal (catalog-level
-# SELECT), so the SP is not a member. The group also covers the reverse_etl
-# send-log schema and its preview volume (permissions.tf / volumes.tf).
+# SELECT), so the SP is not a member.
 
 # Assign account groups to workspace
 # This makes the account-level groups visible and usable within the workspace

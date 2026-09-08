@@ -337,22 +337,6 @@ resource "databricks_grants" "exports_zapier_schema" {
 
 }
 
-# data_users is deliberately not granted (scoped like mart_sales_reverse_etl). The
-# airflow SP is not listed: it inherits USE_SCHEMA + SELECT from its catalog grant.
-resource "databricks_grants" "reverse_etl_schema" {
-  schema = databricks_schema.reverse_etl.id
-
-  grant {
-    principal  = databricks_group.mart_readers_account["sales_reverse_etl"].display_name
-    privileges = ["USE_SCHEMA", "SELECT"]
-  }
-
-  grant {
-    principal  = databricks_group.dbt_developers_account.display_name
-    privileges = ["USE_SCHEMA", "SELECT"]
-  }
-}
-
 # INSERT only: the job appends and never rewrites history; deletes are a break-glass
 # admin action. SELECT comes from the SP's catalog-level grant.
 resource "databricks_grants" "reverse_etl_sent_log_table" {
