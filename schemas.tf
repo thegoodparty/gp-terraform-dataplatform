@@ -108,6 +108,10 @@ resource "databricks_schema" "er_source_dev" {
     purpose    = "entity_resolution_dev"
   }
 
+  lifecycle {
+    prevent_destroy = true
+  }
+
   depends_on = [databricks_grants.catalog_main]
 }
 
