@@ -549,13 +549,17 @@ resource "databricks_grants" "dbt_staging_schema" {
 # creates and therefore owns, off the catalog-level CREATE_SCHEMA the airflow
 # SPs already hold — no grant, and no schema resource here to fight it.
 #
+# Both privileges, for two different steps: CREATE_TABLE writes each run's dated
+# vintage, and MANAGE covers the swap, which renames the live table aside and
+# drops the backup — ALTER and DROP on tables this SP did not create. MANAGE
+# does not imply CREATE_TABLE, and inherits to the schema's child objects. It
+# also carries the right to drop the schema and to re-grant on it, which is the
+# cost of not transferring ownership outright.
+#
 # Singular grant because er_source is not managed here and carries grants made
 # outside this configuration, which the authoritative plural form would revoke.
-#
-# The swap renames the live table aside, an ALTER on a table this SP did not
-# create, which needs ownership or MANAGE. Out of scope until the swap is armed.
 resource "databricks_grant" "er_source_airflow_prod" {
   schema     = "${databricks_catalog.main.name}.er_source"
   principal  = databricks_service_principal.airflow["airflow"].application_id
-  privileges = ["CREATE_TABLE"]
+  privileges = ["CREATE_TABLE", "MANAGE"]
 }
