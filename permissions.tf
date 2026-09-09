@@ -542,22 +542,11 @@ resource "databricks_grants" "dbt_staging_schema" {
 # =============================================================================
 # Entity-Resolution Schema Permissions
 # =============================================================================
-# The airflow SPs run the matcha entity-resolution container, which creates and
-# owns a dated vintage per run. Only prod needs granting: er_source already
-# exists and the civics marts read it, so prod writes a schema it does not own.
-# Dev points `databricks_er_schema` at a schema of its own, which the DAG
-# creates and therefore owns, off the catalog-level CREATE_SCHEMA the airflow
-# SPs already hold — no grant, and no schema resource here to fight it.
-#
-# Both privileges, for two different steps: CREATE_TABLE writes each run's dated
-# vintage, and MANAGE covers the swap, which renames the live table aside and
-# drops the backup — ALTER and DROP on tables this SP did not create. MANAGE
-# does not imply CREATE_TABLE, and inherits to the schema's child objects. It
-# also carries the right to drop the schema and to re-grant on it, which is the
-# cost of not transferring ownership outright.
-#
-# Singular grant because er_source is not managed here and carries grants made
-# outside this configuration, which the authoritative plural form would revoke.
+# Prod only: er_source already exists and the civics marts read it, so prod writes
+# a schema it does not own. Dev creates its own and owns it. CREATE_TABLE writes
+# each dated vintage; MANAGE (which does not imply it) covers the swap's rename and
+# drop. Singular grant because er_source is unmanaged here and carries grants the
+# authoritative plural form would revoke.
 resource "databricks_grant" "er_source_airflow_prod" {
   schema     = "${databricks_catalog.main.name}.er_source"
   principal  = databricks_service_principal.airflow["airflow"].application_id
