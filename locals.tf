@@ -32,9 +32,8 @@ locals {
   # the models_mban schema, and it holds DEID voter data scoped to a cohort.
   # sales_reverse_etl is excluded: it holds PII-bearing candidate export feeds
   # (email, phone, street address). Read access is scoped to the
-  # mart_sales_reverse_etl_readers group (biz-ops, assigned in the console; plus the
-  # reverse-ETL service principal once DATA-1840 builds it), not all data users.
-  # See DATA-2011.
+  # mart_sales_reverse_etl_readers group (biz-ops, assigned in the console), not all
+  # data users.
   # gp_api is excluded: it passes the full L2 record through, PII included.
   # Only the gp-api service principal is in its group.
   shared_marts = { for k, v in local.marts_map : k => v if k != "mban2026" && k != "sales_reverse_etl" && k != local.gp_api.mart }
