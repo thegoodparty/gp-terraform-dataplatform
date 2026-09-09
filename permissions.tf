@@ -542,15 +542,16 @@ resource "databricks_grants" "dbt_staging_schema" {
 # =============================================================================
 # Entity-Resolution Schema Permissions
 # =============================================================================
-# The airflow SPs run the matcha entity-resolution container, which writes a
-# dated vintage per run into er_source. Catalog-level CREATE_SCHEMA confers
-# nothing inside a schema they do not own, so CREATE_TABLE has to be granted on
-# er_source itself. Singular grant because er_source is not managed here and
-# carries grants made outside this configuration.
+# The airflow SPs run the matcha entity-resolution container, which creates and
+# owns a dated vintage per run in er_source. Catalog-level CREATE_SCHEMA confers
+# nothing inside a schema they do not own, so CREATE_TABLE is granted here;
+# USE_SCHEMA and SELECT come from the catalog grant. Singular grant because
+# er_source is not managed here and carries grants made outside this
+# configuration, which the authoritative plural form would revoke.
 resource "databricks_grant" "er_source_airflow" {
   for_each = databricks_service_principal.airflow
 
   schema     = "${databricks_catalog.main.name}.er_source"
   principal  = each.value.application_id
-  privileges = ["USE_SCHEMA", "SELECT", "CREATE_TABLE", "MODIFY"]
+  privileges = ["CREATE_TABLE"]
 }
