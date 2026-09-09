@@ -523,3 +523,19 @@ resource "databricks_grants" "dbt_staging_schema" {
     ]
   }
 }
+
+# =============================================================================
+# Entity-Resolution Schema Permissions
+# =============================================================================
+# The airflow SPs run the matcha entity-resolution container, which writes a
+# dated vintage per run into er_source. Catalog-level CREATE_SCHEMA confers
+# nothing inside a schema they do not own, so CREATE_TABLE has to be granted on
+# er_source itself. Singular grant because er_source is not managed here and
+# carries grants made outside this configuration.
+resource "databricks_grant" "er_source_airflow" {
+  for_each = databricks_service_principal.airflow
+
+  schema     = "${databricks_catalog.main.name}.er_source"
+  principal  = each.value.application_id
+  privileges = ["USE_SCHEMA", "SELECT", "CREATE_TABLE", "MODIFY"]
+}
