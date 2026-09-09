@@ -80,7 +80,7 @@ resource "databricks_schema" "model_predictions" {
 resource "databricks_schema" "reverse_etl" {
   catalog_name = databricks_catalog.main.name
   name         = "reverse_etl"
-  comment      = "Reverse-ETL send log: records every payload delivered to a destination. Not a mart and not in any shared-marts rollup; read access rides the catalog-level grants."
+  comment      = "Reverse-ETL send-log tables, created and owned by the reverse-ETL job (one per flow). Not a mart and not in any shared-marts rollup; read access rides the catalog-level grants."
 
   properties = {
     managed_by = "terraform"
@@ -92,47 +92,6 @@ resource "databricks_schema" "reverse_etl" {
   }
 
   depends_on = [databricks_grants.catalog_main]
-}
-
-# Terraform owns this DDL exclusively: the job only appends, so a missing table fails
-# the run instead of silently re-sending everyone. Four columns is deliberate.
-resource "databricks_sql_table" "sent_log" {
-  name               = "sent_log"
-  catalog_name       = databricks_catalog.main.name
-  schema_name        = databricks_schema.reverse_etl.name
-  table_type         = "MANAGED"
-  data_source_format = "DELTA"
-  warehouse_id       = data.databricks_sql_warehouse.starter.id
-  cluster_keys       = ["flow_id", "tracking_key"]
-  comment            = "Every reverse-ETL delivery, one row per send. Append-only for the job; deletes are a break-glass admin action."
-
-  column {
-    name     = "flow_id"
-    type     = "STRING"
-    nullable = false
-  }
-
-  column {
-    name     = "tracking_key"
-    type     = "STRING"
-    nullable = false
-  }
-
-  column {
-    name     = "payload"
-    type     = "STRING"
-    nullable = false
-  }
-
-  column {
-    name     = "sent_at"
-    type     = "TIMESTAMP"
-    nullable = false
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # Dynamic mart schemas from YAML configuration

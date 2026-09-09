@@ -337,14 +337,18 @@ resource "databricks_grants" "exports_zapier_schema" {
 
 }
 
-# INSERT only: the job appends and never rewrites history; deletes are a break-glass
-# admin action. SELECT comes from the SP's catalog-level grant.
-resource "databricks_grants" "reverse_etl_sent_log_table" {
-  table = databricks_sql_table.sent_log.id
+# No table resource exists here on purpose: each environment's job creates and owns
+# its per-flow send-log tables, and ownership isolates dev from prod. The lost-table
+# guard lives in the app (an empty log on a non-first run fails the run).
+resource "databricks_grants" "reverse_etl_schema" {
+  schema = databricks_schema.reverse_etl.id
 
-  grant {
-    principal  = databricks_service_principal.airflow["airflow"].application_id
-    privileges = ["INSERT"]
+  dynamic "grant" {
+    for_each = databricks_service_principal.airflow
+    content {
+      principal  = grant.value.application_id
+      privileges = ["CREATE_TABLE"]
+    }
   }
 }
 
