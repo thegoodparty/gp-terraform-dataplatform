@@ -76,6 +76,24 @@ resource "databricks_schema" "model_predictions" {
   depends_on = [databricks_grants.catalog_main]
 }
 
+# Standalone on purpose (not a config/marts.yaml mart): a send log, not a queryable mart.
+resource "databricks_schema" "reverse_etl" {
+  catalog_name = databricks_catalog.main.name
+  name         = "reverse_etl"
+  comment      = "Reverse-ETL send-log tables, created and owned by the reverse-ETL job (one per flow). Not a mart and not in any shared-marts rollup; read access rides the catalog-level grants."
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "reverse_etl"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [databricks_grants.catalog_main]
+}
+
 # Dynamic mart schemas from YAML configuration
 resource "databricks_schema" "marts" {
   for_each = local.marts_map

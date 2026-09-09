@@ -200,9 +200,8 @@ resource "databricks_group_member" "agent_in_mart_readers" {
 # for_each from config/marts.yaml) is intentionally NOT in local.shared_marts:
 # mart_sales_reverse_etl holds PII-bearing candidate export feeds, so the "data users"
 # group is not auto-added. Membership is managed in the Databricks console (biz-ops).
-# When DATA-1840 creates the reverse-ETL service principal, add it here as a
-# databricks_group_member of mart_readers_account["sales_reverse_etl"] (unless it is an
-# Airflow SP, which already inherits catalog-level SELECT).
+# The reverse-ETL job reads it as the airflow service principal (catalog-level
+# SELECT), so the SP is not a member.
 
 # Assign account groups to workspace
 # This makes the account-level groups visible and usable within the workspace
