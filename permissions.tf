@@ -543,30 +543,19 @@ resource "databricks_grants" "dbt_staging_schema" {
 # Entity-Resolution Schema Permissions
 # =============================================================================
 # The airflow SPs run the matcha entity-resolution container, which creates and
-# owns a dated vintage per run. Catalog-level CREATE_SCHEMA confers nothing
-# inside a schema they do not own, so CREATE_TABLE is granted per schema;
-# USE_SCHEMA and SELECT come from the catalog grant.
+# owns a dated vintage per run. Only prod needs granting: er_source already
+# exists and the civics marts read it, so prod writes a schema it does not own.
+# Dev points `databricks_er_schema` at a schema of its own, which the DAG
+# creates and therefore owns, off the catalog-level CREATE_SCHEMA the airflow
+# SPs already hold — no grant, and no schema resource here to fight it.
 #
-# Write is split by environment rather than granted to both SPs on one schema:
-# matcha's dated table names carry only the run date, so a shared schema has the
-# two environments fighting over the same vintage and lets a dev swap rename
-# what the civics marts read. The DAG picks its schema with
-# `databricks_er_schema`.
+# Singular grant because er_source is not managed here and carries grants made
+# outside this configuration, which the authoritative plural form would revoke.
 #
-# Singular grant on er_source because it is not managed here and carries grants
-# made outside this configuration, which the authoritative plural form would
-# revoke. er_source_dev is created here, so it takes the plural form.
+# The swap renames the live table aside, an ALTER on a table this SP did not
+# create, which needs ownership or MANAGE. Out of scope until the swap is armed.
 resource "databricks_grant" "er_source_airflow_prod" {
   schema     = "${databricks_catalog.main.name}.er_source"
   principal  = databricks_service_principal.airflow["airflow"].application_id
   privileges = ["CREATE_TABLE"]
-}
-
-resource "databricks_grants" "er_source_dev_schema" {
-  schema = databricks_schema.er_source_dev.id
-
-  grant {
-    principal  = databricks_service_principal.airflow["airflow_dev"].application_id
-    privileges = ["CREATE_TABLE"]
-  }
 }

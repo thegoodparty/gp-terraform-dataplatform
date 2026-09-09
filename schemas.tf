@@ -94,27 +94,6 @@ resource "databricks_schema" "reverse_etl" {
   depends_on = [databricks_grants.catalog_main]
 }
 
-# Dev counterpart of the unmanaged er_source schema. One catalog serves both
-# environments and matcha's dated table names carry only the run date, so
-# sharing er_source would have a dev run and a prod run fight over the same
-# vintage, and a dev swap rename what the civics marts read.
-resource "databricks_schema" "er_source_dev" {
-  catalog_name = databricks_catalog.main.name
-  name         = "er_source_dev"
-  comment      = "Entity-resolution outputs from the dev Airflow deployment. Prod writes the unmanaged er_source schema."
-
-  properties = {
-    managed_by = "terraform"
-    purpose    = "entity_resolution_dev"
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-
-  depends_on = [databricks_grants.catalog_main]
-}
-
 # Dynamic mart schemas from YAML configuration
 resource "databricks_schema" "marts" {
   for_each = local.marts_map
