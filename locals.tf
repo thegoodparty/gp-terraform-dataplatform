@@ -53,7 +53,9 @@ locals {
       default_task_pod_cpu    = "0.25"
       default_task_pod_memory = "0.5Gi"
       resource_quota_cpu      = "10"
-      resource_quota_memory   = "20Gi"
+      # Headroom for the entity-resolution match pods: under ~32Gi their DuckDB
+      # working set spills to EBS-backed node storage and stalls. Ceiling, not spend.
+      resource_quota_memory   = "48Gi"
       scheduler_size          = "SMALL"
       worker_queues = [
         {
@@ -97,7 +99,9 @@ locals {
       default_task_pod_cpu    = "0.25"
       default_task_pod_memory = "0.5Gi"
       resource_quota_cpu      = "10"
-      resource_quota_memory   = "20Gi"
+      # Headroom for the entity-resolution match pods: under ~32Gi their DuckDB
+      # working set spills to EBS-backed node storage and stalls. Ceiling, not spend.
+      resource_quota_memory   = "48Gi"
       scheduler_size          = "SMALL"
       worker_queues = [
         {
