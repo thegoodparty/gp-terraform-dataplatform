@@ -123,6 +123,16 @@ resource "databricks_grants" "external_location_storage" {
     principal  = data.databricks_group.data_engineers.display_name
     privileges = ["CREATE_EXTERNAL_TABLE", "READ_FILES", "WRITE_FILES"]
   }
+
+  # The L2 voter-file DAG reads the archives it stages in this bucket via read_files.
+  # Read only: it writes to S3 with AWS credentials, not through Unity Catalog.
+  dynamic "grant" {
+    for_each = databricks_service_principal.airflow
+    content {
+      principal  = grant.value.application_id
+      privileges = ["READ_FILES"]
+    }
+  }
 }
 
 # People-API loader external location. The loader runs as the airflow SPs
