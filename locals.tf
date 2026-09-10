@@ -52,10 +52,10 @@ locals {
       is_high_availability    = false
       default_task_pod_cpu    = "0.25"
       default_task_pod_memory = "0.5Gi"
-      resource_quota_cpu      = "10"
-      # Headroom to size the entity-resolution match pods by Airflow Variable
-      # without a terraform round trip. This caps combined usage across running
+      # Astro requires the memory quota in Gi to be exactly twice the CPU quota,
+      # so these two move together. The cap is on combined usage across running
       # pods; spend follows each pod's own configured limits, not the cap.
+      resource_quota_cpu      = "48"
       resource_quota_memory   = "96Gi"
       scheduler_size          = "SMALL"
       worker_queues = [
@@ -99,10 +99,10 @@ locals {
       is_high_availability    = false
       default_task_pod_cpu    = "0.25"
       default_task_pod_memory = "0.5Gi"
-      resource_quota_cpu      = "10"
-      # Headroom to size the entity-resolution match pods by Airflow Variable
-      # without a terraform round trip. This caps combined usage across running
+      # Astro requires the memory quota in Gi to be exactly twice the CPU quota,
+      # so these two move together. The cap is on combined usage across running
       # pods; spend follows each pod's own configured limits, not the cap.
+      resource_quota_cpu      = "48"
       resource_quota_memory   = "96Gi"
       scheduler_size          = "SMALL"
       worker_queues = [
