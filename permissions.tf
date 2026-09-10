@@ -353,6 +353,19 @@ resource "databricks_grants" "reverse_etl_schema" {
 }
 
 # =============================================================================
+# Gold-match daily loop (model_predictions)
+# =============================================================================
+# Singular form: the schema is managed here but its grant set is not (dbt Cloud
+# and others hold grants the plural form would revoke). Schema-level so the
+# run-log and quarantine tables, created at activation, inherit it. Prod only:
+# the matcher has no dev tables, so a dev rehearsal must stay unable to write.
+resource "databricks_grant" "model_predictions_airflow_prod" {
+  schema     = databricks_schema.model_predictions.id
+  principal  = databricks_service_principal.airflow["airflow"].application_id
+  privileges = ["MODIFY"]
+}
+
+# =============================================================================
 # SQL Warehouse Permissions
 # =============================================================================
 
