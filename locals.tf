@@ -53,7 +53,10 @@ locals {
       default_task_pod_cpu    = "0.25"
       default_task_pod_memory = "0.5Gi"
       resource_quota_cpu      = "10"
-      resource_quota_memory   = "20Gi"
+      # Headroom to size the entity-resolution match pods by Airflow Variable
+      # without a terraform round trip. This caps combined usage across running
+      # pods; spend follows each pod's own configured limits, not the cap.
+      resource_quota_memory   = "96Gi"
       scheduler_size          = "SMALL"
       worker_queues = [
         {
@@ -97,7 +100,10 @@ locals {
       default_task_pod_cpu    = "0.25"
       default_task_pod_memory = "0.5Gi"
       resource_quota_cpu      = "10"
-      resource_quota_memory   = "20Gi"
+      # Headroom to size the entity-resolution match pods by Airflow Variable
+      # without a terraform round trip. This caps combined usage across running
+      # pods; spend follows each pod's own configured limits, not the cap.
+      resource_quota_memory   = "96Gi"
       scheduler_size          = "SMALL"
       worker_queues = [
         {
