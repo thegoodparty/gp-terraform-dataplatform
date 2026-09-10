@@ -53,9 +53,10 @@ locals {
       default_task_pod_cpu    = "0.25"
       default_task_pod_memory = "0.5Gi"
       resource_quota_cpu      = "10"
-      # Headroom for the entity-resolution match pods: under ~32Gi their DuckDB
-      # working set spills to EBS-backed node storage and stalls. Ceiling, not spend.
-      resource_quota_memory   = "48Gi"
+      # Headroom to size the entity-resolution match pods by Airflow Variable
+      # without a terraform round trip. The quota is an admission ceiling and is
+      # not billed; task pods are billed on their own configured limits.
+      resource_quota_memory   = "96Gi"
       scheduler_size          = "SMALL"
       worker_queues = [
         {
@@ -99,9 +100,10 @@ locals {
       default_task_pod_cpu    = "0.25"
       default_task_pod_memory = "0.5Gi"
       resource_quota_cpu      = "10"
-      # Headroom for the entity-resolution match pods: under ~32Gi their DuckDB
-      # working set spills to EBS-backed node storage and stalls. Ceiling, not spend.
-      resource_quota_memory   = "48Gi"
+      # Headroom to size the entity-resolution match pods by Airflow Variable
+      # without a terraform round trip. The quota is an admission ceiling and is
+      # not billed; task pods are billed on their own configured limits.
+      resource_quota_memory   = "96Gi"
       scheduler_size          = "SMALL"
       worker_queues = [
         {
