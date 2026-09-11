@@ -28,15 +28,13 @@ locals {
   }
 
   # Marts that all data users should be able to read.
-  # mban2026 is excluded: its reader group also grants write + CREATE_MODEL on
-  # the models_mban schema, and it holds DEID voter data scoped to a cohort.
   # sales_reverse_etl is excluded: it holds PII-bearing candidate export feeds
   # (email, phone, street address). Read access is scoped to the
   # mart_sales_reverse_etl_readers group (biz-ops, assigned in the console), not all
   # data users.
   # gp_api is excluded: it passes the full L2 record through, PII included.
   # Only the gp-api service principal is in its group.
-  shared_marts = { for k, v in local.marts_map : k => v if k != "mban2026" && k != "sales_reverse_etl" && k != local.gp_api.mart }
+  shared_marts = { for k, v in local.marts_map : k => v if k != "sales_reverse_etl" && k != local.gp_api.mart }
 
   # Astro deployment environments
   # Both dev and prod Airflow environments live in our single infrastructure
