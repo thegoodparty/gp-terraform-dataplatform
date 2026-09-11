@@ -35,24 +35,6 @@ resource "databricks_schema" "dbt_staging" {
   depends_on = [databricks_grants.catalog_main]
 }
 
-# MBAN models schema for ML model storage and ad hoc objects
-resource "databricks_schema" "models_mban" {
-  catalog_name = databricks_catalog.main.name
-  name         = "models_mban"
-  comment      = "Schema for MBAN team ML models and predictions"
-
-  properties = {
-    managed_by = "terraform"
-    purpose    = "models"
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-
-  depends_on = [databricks_grants.catalog_main]
-}
-
 # exising model_predictions schema, now under terraform management
 import {
   to = databricks_schema.model_predictions
