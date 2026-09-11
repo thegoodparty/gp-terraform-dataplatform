@@ -1,11 +1,6 @@
 # Account-level groups for Unity Catalog
 # These groups must be created at the account level to grant Unity Catalog permissions
 
-# Workspace-level app lookup for Genie Slack Bot
-data "databricks_app" "genie_slack_bot" {
-  name = "gp-genie-slack-bot"
-}
-
 # Data sources for service principals (managed outside Terraform)
 data "databricks_service_principal" "dbt_cloud" {
   provider     = databricks.account
@@ -35,12 +30,6 @@ data "databricks_service_principal" "github_action" {
 data "databricks_service_principal" "looker_studio" {
   provider     = databricks.account
   display_name = "looker-studio"
-}
-
-# Resolve the account-level SP from the workspace app rather than hard-coding its client ID.
-data "databricks_service_principal" "genie_slack_bot" {
-  provider       = databricks.account
-  application_id = data.databricks_app.genie_slack_bot.app.service_principal_client_id
 }
 
 # Data sources for existing groups (managed outside Terraform)
@@ -149,15 +138,6 @@ resource "databricks_group_member" "genie_civics_in_mart_civics_readers" {
   provider  = databricks.account
   group_id  = databricks_group.mart_readers_account["civics"].id
   member_id = databricks_group.genie_civics.id
-}
-
-# Add genie-slack-bot SP to genie_civics group
-# Inherits: USE_CATALOG (via mart_civics_readers → catalog_main),
-#           USE_SCHEMA + SELECT (via mart_civics_readers → mart_schemas)
-resource "databricks_group_member" "genie_slack_bot_in_genie_civics" {
-  provider  = databricks.account
-  group_id  = databricks_group.genie_civics.id
-  member_id = data.databricks_service_principal.genie_slack_bot.id
 }
 
 # Add sigma SP to mart reader groups for the POV test cases.
