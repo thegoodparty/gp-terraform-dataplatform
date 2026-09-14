@@ -5,13 +5,6 @@
 # loader_iam.tf); calls then authorize and bill as this account.
 
 locals {
-  # Deployment > Details > Advanced > Workload identity. Recreating a deployment
-  # changes its role name, at which point the trust below stops matching.
-  gold_match_astro_principals = {
-    dev  = "arn:aws:iam::111928029897:role/astro-galactian-element-5125"
-    prod = "arn:aws:iam::111928029897:role/astro-exothermic-astronaut-9119"
-  }
-
   # Both Bedrock clients pin us-east-1 (bedrock_clients/embedding.py and
   # structured.py); var.aws_region is the loader's us-west-2 and must not leak
   # in here. The global profile may serve a request from any region and AWS
@@ -30,7 +23,7 @@ locals {
 }
 
 resource "aws_iam_role" "gold_match_bedrock" {
-  for_each = local.gold_match_astro_principals
+  for_each = local.astro_workload_identities
 
   name        = "gold-match-bedrock-${each.key}"
   description = "Assumed by the gold-match daily pod on the ${each.key} Astro deployment to call Bedrock."
@@ -59,7 +52,7 @@ resource "aws_iam_role" "gold_match_bedrock" {
 # Converse authorizes against bedrock:InvokeModel too; the matcher streams
 # nothing, so the streaming action is deliberately absent.
 resource "aws_iam_role_policy" "gold_match_bedrock" {
-  for_each = local.gold_match_astro_principals
+  for_each = local.astro_workload_identities
 
   name = "gold-match-bedrock-invoke"
   role = aws_iam_role.gold_match_bedrock[each.key].id

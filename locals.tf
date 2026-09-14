@@ -38,6 +38,15 @@ locals {
 
   # Astro deployment environments
   # Both dev and prod Airflow environments live in our single infrastructure
+  # The Astronomer-managed workload identity each deployment's pods run as
+  # (Deployment > Details > Advanced > Workload identity). They live in
+  # Astronomer's account and are referenced BY NAME: recreating a deployment
+  # changes the name, and every trust policy that names them reads this map.
+  astro_workload_identities = {
+    dev  = "arn:aws:iam::111928029897:role/astro-galactian-element-5125"
+    prod = "arn:aws:iam::111928029897:role/astro-exothermic-astronaut-9119"
+  }
+
   astro_environments = {
     dev = {
       name                    = "astro-dev"
@@ -53,9 +62,9 @@ locals {
       # Astro requires the memory quota in Gi to be exactly twice the CPU quota,
       # so these two move together. The cap is on combined usage across running
       # pods; spend follows each pod's own configured limits, not the cap.
-      resource_quota_cpu      = "48"
-      resource_quota_memory   = "96Gi"
-      scheduler_size          = "SMALL"
+      resource_quota_cpu    = "48"
+      resource_quota_memory = "96Gi"
+      scheduler_size        = "SMALL"
       worker_queues = [
         {
           name               = "default"
@@ -100,9 +109,9 @@ locals {
       # Astro requires the memory quota in Gi to be exactly twice the CPU quota,
       # so these two move together. The cap is on combined usage across running
       # pods; spend follows each pod's own configured limits, not the cap.
-      resource_quota_cpu      = "48"
-      resource_quota_memory   = "96Gi"
-      scheduler_size          = "SMALL"
+      resource_quota_cpu    = "48"
+      resource_quota_memory = "96Gi"
+      scheduler_size        = "SMALL"
       worker_queues = [
         {
           name               = "default"
