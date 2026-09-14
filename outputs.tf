@@ -118,3 +118,8 @@ output "gp_api_warehouse" {
     id   = databricks_sql_endpoint.gp_api.id
   }
 }
+
+output "gold_match_bedrock_role_arns" {
+  description = "Per-environment role the gold-match pod assumes for Bedrock (the gold_match_aws_role_arn Airflow Variable on that deployment)."
+  value       = { for env, role in aws_iam_role.gold_match_bedrock : env => role.arn }
+}

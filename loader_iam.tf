@@ -32,15 +32,11 @@ locals {
   # so a single value covers dev and prod.
   loader_db_subnet_group = "api-master-rds-subnet-group"
 
-  # Per-environment inputs. astro_principal is the Astronomer-managed workload
-  # identity role for that deployment (Deployment > Details > Workload Identity).
+  # Per-environment inputs. astro_principal is the deployment's Astronomer-managed
+  # workload identity (local.astro_workload_identities).
   loader_rds_admin = {
-    dev = {
-      astro_principal = "arn:aws:iam::111928029897:role/astro-galactian-element-5125"
-    }
-    prod = {
-      astro_principal = "arn:aws:iam::111928029897:role/astro-exothermic-astronaut-9119"
-    }
+    dev  = { astro_principal = local.astro_workload_identities.dev }
+    prod = { astro_principal = local.astro_workload_identities.prod }
   }
 }
 
