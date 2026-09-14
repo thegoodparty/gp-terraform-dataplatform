@@ -28,19 +28,18 @@ locals {
   }
 
   # Marts that all data users should be able to read.
-  # mban2026 is excluded: its reader group also grants write + CREATE_MODEL on
-  # the models_mban schema, and it holds DEID voter data scoped to a cohort.
   # sales_reverse_etl is excluded: it holds PII-bearing candidate export feeds
   # (email, phone, street address). Read access is scoped to the
-  # mart_sales_reverse_etl_readers group (biz-ops, assigned in the console; plus the
-  # reverse-ETL service principal once DATA-1840 builds it), not all data users.
-  # See DATA-2011.
+  # mart_sales_reverse_etl_readers group (biz-ops, assigned in the console), not all
+  # data users.
   # gp_api is excluded: it passes the full L2 record through, PII included.
   # Only the gp-api service principal is in its group.
-  shared_marts = { for k, v in local.marts_map : k => v if k != "mban2026" && k != "sales_reverse_etl" && k != local.gp_api.mart }
+  shared_marts = { for k, v in local.marts_map : k => v if k != "sales_reverse_etl" && k != local.gp_api.mart }
 
-  # The Astronomer-managed workload identity per deployment (Deployment > Details >
-  # Workload Identity). Every AWS role Airflow assumes trusts these.
+  # The Astronomer-managed workload identity each deployment's pods run as
+  # (Deployment > Details > Advanced > Workload identity). They live in
+  # Astronomer's account and are referenced BY NAME: recreating a deployment
+  # changes the name, and every trust policy that names them reads this map.
   astro_workload_identities = {
     dev  = "arn:aws:iam::111928029897:role/astro-galactian-element-5125"
     prod = "arn:aws:iam::111928029897:role/astro-exothermic-astronaut-9119"
@@ -94,9 +93,12 @@ locals {
       is_high_availability    = false
       default_task_pod_cpu    = "0.25"
       default_task_pod_memory = "0.5Gi"
-      resource_quota_cpu      = "10"
-      resource_quota_memory   = "20Gi"
-      scheduler_size          = "SMALL"
+      # Astro requires the memory quota in Gi to be exactly twice the CPU quota,
+      # so these two move together. The cap is on combined usage across running
+      # pods; spend follows each pod's own configured limits, not the cap.
+      resource_quota_cpu    = "48"
+      resource_quota_memory = "96Gi"
+      scheduler_size        = "SMALL"
       worker_queues = [
         {
           name               = "default"
@@ -139,9 +141,12 @@ locals {
       is_high_availability    = false
       default_task_pod_cpu    = "0.25"
       default_task_pod_memory = "0.5Gi"
-      resource_quota_cpu      = "10"
-      resource_quota_memory   = "20Gi"
-      scheduler_size          = "SMALL"
+      # Astro requires the memory quota in Gi to be exactly twice the CPU quota,
+      # so these two move together. The cap is on combined usage across running
+      # pods; spend follows each pod's own configured limits, not the cap.
+      resource_quota_cpu    = "48"
+      resource_quota_memory = "96Gi"
+      scheduler_size        = "SMALL"
       worker_queues = [
         {
           name               = "default"

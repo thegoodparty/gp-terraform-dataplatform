@@ -248,24 +248,6 @@ resource "databricks_grants" "mart_schemas" {
   ]
 }
 
-# MBAN models schema permissions
-resource "databricks_grants" "models_mban_schema" {
-  schema = databricks_schema.models_mban.id
-
-  # MBAN readers group can create and manage ML models
-  grant {
-    principal = databricks_group.mart_readers_account["mban2026"].display_name
-    privileges = [
-      "USE_SCHEMA",
-      "SELECT",
-      "CREATE_TABLE",
-      "MODIFY",
-      "CREATE_MODEL",
-      "EXECUTE"
-    ]
-  }
-}
-
 # Singular grant won't clobber grants set outside Terraform
 resource "databricks_grant" "model_predictions_ml_users" {
   schema = databricks_schema.model_predictions.id
@@ -345,6 +327,34 @@ resource "databricks_grants" "exports_zapier_schema" {
     ]
   }
 
+}
+
+# No table resource exists here on purpose: each environment's job creates and owns
+# its per-flow send-log tables, and ownership isolates dev from prod. The lost-table
+# guard lives in the app (an empty log on a non-first run fails the run).
+resource "databricks_grants" "reverse_etl_schema" {
+  schema = databricks_schema.reverse_etl.id
+
+  dynamic "grant" {
+    for_each = databricks_service_principal.airflow
+    content {
+      principal  = grant.value.application_id
+      privileges = ["CREATE_TABLE"]
+    }
+  }
+}
+
+# =============================================================================
+# Gold-match daily loop (model_predictions)
+# =============================================================================
+# Singular form: the schema is managed here but its grant set is not (dbt Cloud
+# and others hold grants the plural form would revoke). Schema-level so the
+# run-log and quarantine tables, created at activation, inherit it. Prod only:
+# the matcher has no dev tables, so a dev rehearsal must stay unable to write.
+resource "databricks_grant" "model_predictions_airflow_prod" {
+  schema     = databricks_schema.model_predictions.id
+  principal  = databricks_service_principal.airflow["airflow"].application_id
+  privileges = ["MODIFY"]
 }
 
 # =============================================================================
@@ -429,45 +439,6 @@ resource "databricks_permissions" "sql_warehouse_gp_api" {
   }
 
   depends_on = [databricks_mws_permission_assignment.gp_api]
-}
-
-# =============================================================================
-# Compute Cluster Permissions
-# =============================================================================
-# Grant permissions on the shared compute cluster (classic-cluster)
-
-data "databricks_cluster" "classic" {
-  cluster_name = "classic-cluster"
-}
-
-resource "databricks_permissions" "cluster_classic" {
-  cluster_id = data.databricks_cluster.classic.id
-
-  # Note: admins group has CAN_MANAGE by default (built-in, cannot be modified)
-
-  access_control {
-    group_name       = data.databricks_group.dbt_users.display_name
-    permission_level = "CAN_RESTART"
-  }
-
-  access_control {
-    service_principal_name = data.databricks_service_principal.airbyte.application_id
-    permission_level       = "CAN_RESTART"
-  }
-
-  # Airflow service principals
-  dynamic "access_control" {
-    for_each = databricks_service_principal.airflow
-    content {
-      service_principal_name = access_control.value.application_id
-      permission_level       = "CAN_RESTART"
-    }
-  }
-
-  access_control {
-    service_principal_name = databricks_service_principal.dbt_cloud_staging.application_id
-    permission_level       = "CAN_RESTART"
-  }
 }
 
 # =============================================================================
@@ -571,4 +542,17 @@ resource "databricks_grants" "dbt_staging_schema" {
       "EXECUTE"
     ]
   }
+}
+
+# =============================================================================
+# Entity-Resolution Schema Permissions
+# =============================================================================
+
+# Prod only: dev creates and owns its own ER schema, while prod writes the
+# pre-existing er_source. MANAGE does not imply CREATE_TABLE, so both are listed.
+# Singular grant: the authoritative plural would revoke er_source's other grants.
+resource "databricks_grant" "er_source_airflow_prod" {
+  schema     = "${databricks_catalog.main.name}.er_source"
+  principal  = databricks_service_principal.airflow["airflow"].application_id
+  privileges = ["CREATE_TABLE", "MANAGE"]
 }

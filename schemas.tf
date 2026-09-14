@@ -35,24 +35,6 @@ resource "databricks_schema" "dbt_staging" {
   depends_on = [databricks_grants.catalog_main]
 }
 
-# MBAN models schema for ML model storage and ad hoc objects
-resource "databricks_schema" "models_mban" {
-  catalog_name = databricks_catalog.main.name
-  name         = "models_mban"
-  comment      = "Schema for MBAN team ML models and predictions"
-
-  properties = {
-    managed_by = "terraform"
-    purpose    = "models"
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-
-  depends_on = [databricks_grants.catalog_main]
-}
-
 # exising model_predictions schema, now under terraform management
 import {
   to = databricks_schema.model_predictions
@@ -67,6 +49,24 @@ resource "databricks_schema" "model_predictions" {
   properties = {
     managed_by = "terraform"
     purpose    = "models"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [databricks_grants.catalog_main]
+}
+
+# Standalone on purpose (not a config/marts.yaml mart): a send log, not a queryable mart.
+resource "databricks_schema" "reverse_etl" {
+  catalog_name = databricks_catalog.main.name
+  name         = "reverse_etl"
+  comment      = "Reverse-ETL send-log tables, created and owned by the reverse-ETL job (one per flow). Not a mart and not in any shared-marts rollup; read access rides the catalog-level grants."
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "reverse_etl"
   }
 
   lifecycle {

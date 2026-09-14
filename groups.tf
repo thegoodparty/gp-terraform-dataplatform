@@ -1,11 +1,6 @@
 # Account-level groups for Unity Catalog
 # These groups must be created at the account level to grant Unity Catalog permissions
 
-# Workspace-level app lookup for Genie Slack Bot
-data "databricks_app" "genie_slack_bot" {
-  name = "gp-genie-slack-bot"
-}
-
 # Data sources for service principals (managed outside Terraform)
 data "databricks_service_principal" "dbt_cloud" {
   provider     = databricks.account
@@ -35,12 +30,6 @@ data "databricks_service_principal" "github_action" {
 data "databricks_service_principal" "looker_studio" {
   provider     = databricks.account
   display_name = "looker-studio"
-}
-
-# Resolve the account-level SP from the workspace app rather than hard-coding its client ID.
-data "databricks_service_principal" "genie_slack_bot" {
-  provider       = databricks.account
-  application_id = data.databricks_app.genie_slack_bot.app.service_principal_client_id
 }
 
 # Data sources for existing groups (managed outside Terraform)
@@ -103,7 +92,6 @@ resource "databricks_group_member" "ml_users_in_data_users" {
 }
 
 # Give all data users read access to the general-purpose marts.
-# mban2026 is excluded (see local.shared_marts).
 resource "databricks_group_member" "data_users_in_mart_readers" {
   for_each  = local.shared_marts
   provider  = databricks.account
@@ -151,15 +139,6 @@ resource "databricks_group_member" "genie_civics_in_mart_civics_readers" {
   member_id = databricks_group.genie_civics.id
 }
 
-# Add genie-slack-bot SP to genie_civics group
-# Inherits: USE_CATALOG (via mart_civics_readers → catalog_main),
-#           USE_SCHEMA + SELECT (via mart_civics_readers → mart_schemas)
-resource "databricks_group_member" "genie_slack_bot_in_genie_civics" {
-  provider  = databricks.account
-  group_id  = databricks_group.genie_civics.id
-  member_id = data.databricks_service_principal.genie_slack_bot.id
-}
-
 # Add sigma SP to mart reader groups for the POV test cases.
 # Inherits: USE_CATALOG (via catalog_main),
 #           USE_SCHEMA + SELECT (via mart_schemas)
@@ -200,9 +179,8 @@ resource "databricks_group_member" "agent_in_mart_readers" {
 # for_each from config/marts.yaml) is intentionally NOT in local.shared_marts:
 # mart_sales_reverse_etl holds PII-bearing candidate export feeds, so the "data users"
 # group is not auto-added. Membership is managed in the Databricks console (biz-ops).
-# When DATA-1840 creates the reverse-ETL service principal, add it here as a
-# databricks_group_member of mart_readers_account["sales_reverse_etl"] (unless it is an
-# Airflow SP, which already inherits catalog-level SELECT).
+# The reverse-ETL job reads it as the airflow service principal (catalog-level
+# SELECT), so the SP is not a member.
 
 # Assign account groups to workspace
 # This makes the account-level groups visible and usable within the workspace
