@@ -537,11 +537,10 @@ resource "databricks_grants" "dbt_staging_schema" {
 # =============================================================================
 # Entity-Resolution Schema Permissions
 # =============================================================================
-# Prod only: er_source already exists and the civics marts read it, so prod writes
-# a schema it does not own. Dev creates its own and owns it. CREATE_TABLE writes
-# each dated vintage; MANAGE (which does not imply it) covers the swap's rename and
-# drop. Singular grant because er_source is unmanaged here and carries grants the
-# authoritative plural form would revoke.
+
+# Prod only: dev creates and owns its own ER schema, while prod writes the
+# pre-existing er_source. MANAGE does not imply CREATE_TABLE, so both are listed.
+# Singular grant: the authoritative plural would revoke er_source's other grants.
 resource "databricks_grant" "er_source_airflow_prod" {
   schema     = "${databricks_catalog.main.name}.er_source"
   principal  = databricks_service_principal.airflow["airflow"].application_id
