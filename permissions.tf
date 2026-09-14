@@ -238,24 +238,6 @@ resource "databricks_grants" "mart_schemas" {
   ]
 }
 
-# MBAN models schema permissions
-resource "databricks_grants" "models_mban_schema" {
-  schema = databricks_schema.models_mban.id
-
-  # MBAN readers group can create and manage ML models
-  grant {
-    principal = databricks_group.mart_readers_account["mban2026"].display_name
-    privileges = [
-      "USE_SCHEMA",
-      "SELECT",
-      "CREATE_TABLE",
-      "MODIFY",
-      "CREATE_MODEL",
-      "EXECUTE"
-    ]
-  }
-}
-
 # Singular grant won't clobber grants set outside Terraform
 resource "databricks_grant" "model_predictions_ml_users" {
   schema = databricks_schema.model_predictions.id

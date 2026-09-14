@@ -92,7 +92,6 @@ resource "databricks_group_member" "ml_users_in_data_users" {
 }
 
 # Give all data users read access to the general-purpose marts.
-# mban2026 is excluded (see local.shared_marts).
 resource "databricks_group_member" "data_users_in_mart_readers" {
   for_each  = local.shared_marts
   provider  = databricks.account
