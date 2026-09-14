@@ -533,3 +533,16 @@ resource "databricks_grants" "dbt_staging_schema" {
     ]
   }
 }
+
+# =============================================================================
+# Entity-Resolution Schema Permissions
+# =============================================================================
+
+# Prod only: dev creates and owns its own ER schema, while prod writes the
+# pre-existing er_source. MANAGE does not imply CREATE_TABLE, so both are listed.
+# Singular grant: the authoritative plural would revoke er_source's other grants.
+resource "databricks_grant" "er_source_airflow_prod" {
+  schema     = "${databricks_catalog.main.name}.er_source"
+  principal  = databricks_service_principal.airflow["airflow"].application_id
+  privileges = ["CREATE_TABLE", "MANAGE"]
+}
