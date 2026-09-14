@@ -238,24 +238,6 @@ resource "databricks_grants" "mart_schemas" {
   ]
 }
 
-# MBAN models schema permissions
-resource "databricks_grants" "models_mban_schema" {
-  schema = databricks_schema.models_mban.id
-
-  # MBAN readers group can create and manage ML models
-  grant {
-    principal = databricks_group.mart_readers_account["mban2026"].display_name
-    privileges = [
-      "USE_SCHEMA",
-      "SELECT",
-      "CREATE_TABLE",
-      "MODIFY",
-      "CREATE_MODEL",
-      "EXECUTE"
-    ]
-  }
-}
-
 # Singular grant won't clobber grants set outside Terraform
 resource "databricks_grant" "model_predictions_ml_users" {
   schema = databricks_schema.model_predictions.id
@@ -350,6 +332,19 @@ resource "databricks_grants" "reverse_etl_schema" {
       privileges = ["CREATE_TABLE"]
     }
   }
+}
+
+# =============================================================================
+# Gold-match daily loop (model_predictions)
+# =============================================================================
+# Singular form: the schema is managed here but its grant set is not (dbt Cloud
+# and others hold grants the plural form would revoke). Schema-level so the
+# run-log and quarantine tables, created at activation, inherit it. Prod only:
+# the matcher has no dev tables, so a dev rehearsal must stay unable to write.
+resource "databricks_grant" "model_predictions_airflow_prod" {
+  schema     = databricks_schema.model_predictions.id
+  principal  = databricks_service_principal.airflow["airflow"].application_id
+  privileges = ["MODIFY"]
 }
 
 # =============================================================================
