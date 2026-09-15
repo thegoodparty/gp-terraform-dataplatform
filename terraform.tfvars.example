@@ -48,7 +48,8 @@ astro_contact_emails = ["your-email@example.com"]
 # loader_export_lifecycle_days = 30
 # loader_db_cluster_prefix     = "gp-people-db"   # scopes the rds-s3-import trust to the loader's clusters; must match new_cluster_id
 
-# sts:ExternalId per environment for the loader admin role trust policy. In CI this
-# is assembled from the ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV/_PROD repository Variables
-# (same values as omni). Locally, set it to match the live roles' trust policies.
-# loader_rds_admin_external_ids = { dev = "<uuid>", prod = "<uuid>" }
+# sts:ExternalId per environment for the Astro workload-identity role trust policies
+# (gp-people-rds-admin-<env>, gp-l2-voter-files-<env>). In CI this is assembled from
+# the ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV/_PROD repository Variables (same values as
+# omni). Locally, set it to match the live roles' trust policies.
+# astro_workload_external_ids = { dev = "<uuid>", prod = "<uuid>" }

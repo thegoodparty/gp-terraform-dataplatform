@@ -29,24 +29,8 @@ resource "aws_iam_role" "gold_match_bedrock" {
   description = "Assumed by the gold-match daily pod on the ${each.key} Astro deployment to call Bedrock."
   tags        = { Project = "gold-match", Environment = each.key }
 
-  # Trust only this environment's Astro workload identity, gated by the same
-  # per-env sts:ExternalId the loader roles use (a fixed nonce, not a secret;
-  # see var.loader_rds_admin_external_ids).
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect    = "Allow"
-        Principal = { AWS = each.value }
-        Action    = "sts:AssumeRole"
-        Condition = {
-          StringEquals = {
-            "sts:ExternalId" = var.loader_rds_admin_external_ids[each.key]
-          }
-        }
-      },
-    ]
-  })
+  # Trust policy shared with the loader and L2 roles (local.astro_assume_role_policy).
+  assume_role_policy = local.astro_assume_role_policy[each.key]
 }
 
 # Converse authorizes against bedrock:InvokeModel too; the matcher streams

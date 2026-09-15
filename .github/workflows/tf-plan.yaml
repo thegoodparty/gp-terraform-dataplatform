@@ -81,7 +81,7 @@ jobs:
           astro_organization_id     = "${ASTRO_ORGANIZATION_ID}"
           astro_contact_emails      = ${ASTRO_CONTACT_EMAILS}  # unquoted: value is a JSON array
           catalog_storage_bucket    = "${CATALOG_STORAGE_BUCKET}"
-          loader_rds_admin_external_ids = { dev = "${ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV}", prod = "${ASTRO_ASSUME_ROLE_EXTERNAL_ID_PROD}" }
+          astro_workload_external_ids = { dev = "${ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV}", prod = "${ASTRO_ASSUME_ROLE_EXTERNAL_ID_PROD}" }
           EOF
 
       - name: Terraform Init
