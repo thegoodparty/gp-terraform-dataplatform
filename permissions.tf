@@ -539,13 +539,15 @@ resource "databricks_grants" "dbt_staging_schema" {
 # =============================================================================
 
 # Prod only: dev creates and owns its own ER schema, while prod writes the
-# pre-existing er_source. MANAGE implies none of the others, so each is listed:
-# CREATE_TABLE for the dated vintages, READ/WRITE_VOLUME because matcha stages a
-# parquet in er_source.matcha_staging before COPY INTO, and MANAGE for the swap's
-# rename and drop. Singular grant: the authoritative plural would revoke
-# er_source's other grants.
+# pre-existing er_source. Each privilege earns its place because MANAGE implies
+# none of the others: CREATE_TABLE for the dated vintages, READ/WRITE_VOLUME
+# because matcha stages a parquet in er_source.matcha_staging before COPY INTO,
+# MANAGE for the swap's DROP, and MODIFY because ALTER TABLE RENAME needs it on
+# the table being renamed -- the live tables are owned by people, not this
+# principal. Singular grant: the authoritative plural would revoke er_source's
+# other grants.
 resource "databricks_grant" "er_source_airflow_prod" {
   schema     = "${databricks_catalog.main.name}.er_source"
   principal  = databricks_service_principal.airflow["airflow"].application_id
-  privileges = ["CREATE_TABLE", "READ_VOLUME", "WRITE_VOLUME", "MANAGE"]
+  privileges = ["CREATE_TABLE", "READ_VOLUME", "WRITE_VOLUME", "MODIFY", "MANAGE"]
 }
