@@ -564,11 +564,14 @@ resource "databricks_grant" "er_source_airflow_prod" {
 
 # The L2 voter-file DAG rebuilds dbt_source.l2_s3_* with CREATE OR REPLACE TABLE as the
 # prod airflow SP. The schema and every table in it are owned by the dbt_cloud SP, so the
-# SP needs CREATE_TABLE to create and MANAGE to replace what it does not own. Prod only:
+# SP needs CREATE_TABLE to create a table and MODIFY to replace one it does not own:
+# Unity Catalog refuses the REPLACE with "does not have MODIFY on Table", and MANAGE
+# does not imply it. MANAGE is kept from #52; this DAG only ever CREATE OR REPLACEs, so
+# it can likely go once the bootstrap has run and proved MODIFY alone suffices. Prod only:
 # dev loads into a scratch schema it creates and therefore owns. Singular grant: the
 # authoritative plural would revoke dbt_source's other grants (data-engineers, dbt-users).
 resource "databricks_grant" "dbt_source_airflow_prod" {
   schema     = "${databricks_catalog.main.name}.dbt_source"
   principal  = databricks_service_principal.airflow["airflow"].application_id
-  privileges = ["CREATE_TABLE", "MANAGE"]
+  privileges = ["CREATE_TABLE", "MODIFY", "MANAGE"]
 }
