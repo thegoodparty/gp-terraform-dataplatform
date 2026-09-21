@@ -76,6 +76,26 @@ resource "databricks_schema" "reverse_etl" {
   depends_on = [databricks_grants.catalog_main]
 }
 
+# Managed here, unlike the general airbyte_source schema that Airbyte creates and
+# owns: terraform ownership is what lets its grant set (in permissions.tf) be
+# authoritative rather than whatever the connector leaves behind.
+resource "databricks_schema" "airbyte_source_finance" {
+  catalog_name = databricks_catalog.main.name
+  name         = local.finance.source_schema
+  comment      = "Raw finance ingests landed by Airbyte. The finance mart reads it through ephemeral dbt staging models; its analyst audience reads the mart, not this schema."
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "source"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [databricks_grants.catalog_main]
+}
+
 # Dynamic mart schemas from YAML configuration
 resource "databricks_schema" "marts" {
   for_each = local.marts_map

@@ -27,14 +27,30 @@ locals {
     warehouse_name = "wh-gp-api"
   }
 
+  # The finance mart, and the schema Airbyte lands its raw finance ingests in.
+  # Read access is scoped to business and finance ops. The upstream systems are
+  # deliberately not named here: which vendors we run finance on is itself
+  # restricted, and this repo is a wider audience than the mart.
+  finance = {
+    mart          = "finance"
+    source_schema = "airbyte_source_finance"
+  }
+
+  # Marts that are not readable by all data users. Each is reached only through
+  # its own mart_<name>_readers group, whose membership is assigned in the console.
+  # sales_reverse_etl: PII-bearing candidate export feeds (email, phone, street
+  # address), scoped to biz-ops.
+  # gp_api: passes the full L2 record through, PII included. Only the gp-api
+  # service principal is in its group.
+  # finance: financial data, scoped to business and finance ops.
+  restricted_marts = [
+    "sales_reverse_etl",
+    local.gp_api.mart,
+    local.finance.mart,
+  ]
+
   # Marts that all data users should be able to read.
-  # sales_reverse_etl is excluded: it holds PII-bearing candidate export feeds
-  # (email, phone, street address). Read access is scoped to the
-  # mart_sales_reverse_etl_readers group (biz-ops, assigned in the console), not all
-  # data users.
-  # gp_api is excluded: it passes the full L2 record through, PII included.
-  # Only the gp-api service principal is in its group.
-  shared_marts = { for k, v in local.marts_map : k => v if k != "sales_reverse_etl" && k != local.gp_api.mart }
+  shared_marts = { for k, v in local.marts_map : k => v if !contains(local.restricted_marts, k) }
 
   # The Astronomer-managed workload identity each deployment's pods run as
   # (Deployment > Details > Advanced > Workload identity). They live in
