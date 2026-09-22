@@ -16,3 +16,6 @@ marts:
 
   - name: gp_api
     description: "General-purpose mart served directly over SQL to the gp-api application. Currently a pass-through of the L2 nationwide voter file, which carries the full L2 record including PII; read access is scoped to the mart_gp_api_readers group, not all data users (excluded from shared_marts)."
+
+  - name: finance
+    description: "Financial data modeled from the raw ingests in airbyte_source_finance. Read access is scoped to the mart_finance_readers group (business and finance ops, assigned in the console), not all data users (excluded from shared_marts)."

@@ -213,12 +213,18 @@ resource "databricks_grants" "mart_schemas" {
     ]
   }
 
-  grant {
-    principal = databricks_group.dbt_developers_account.display_name
-    privileges = [
-      "USE_SCHEMA",
-      "SELECT"
-    ]
+  # Skipped for the finance mart: its audience is business and finance ops, and
+  # dbt_developers holds no catalog-level SELECT, so withholding the schema grant
+  # is what actually keeps the group out.
+  dynamic "grant" {
+    for_each = each.key == local.finance_mart ? [] : [1]
+    content {
+      principal = databricks_group.dbt_developers_account.display_name
+      privileges = [
+        "USE_SCHEMA",
+        "SELECT"
+      ]
+    }
   }
 
   # dbt_cloud service principal gets write access to create and manage tables/views
