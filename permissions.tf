@@ -217,7 +217,7 @@ resource "databricks_grants" "mart_schemas" {
   # dbt_developers holds no catalog-level SELECT, so withholding the schema grant
   # is what actually keeps the group out.
   dynamic "grant" {
-    for_each = each.key == local.finance.mart ? [] : [1]
+    for_each = each.key == local.finance_mart ? [] : [1]
     content {
       principal = databricks_group.dbt_developers_account.display_name
       privileges = [
@@ -333,24 +333,6 @@ resource "databricks_grants" "exports_zapier_schema" {
     ]
   }
 
-}
-
-# The connector creates and rewrites its own tables here, so CREATE_TABLE and
-# SELECT sit alongside MODIFY. Nothing else is granted: engineers and the dbt and
-# airflow principals already reach the schema through catalog-level SELECT, and
-# mart_finance_readers is deliberately absent because that audience reads the mart.
-resource "databricks_grants" "airbyte_source_finance_schema" {
-  schema = databricks_schema.airbyte_source_finance.id
-
-  grant {
-    principal = data.databricks_service_principal.airbyte.application_id
-    privileges = [
-      "USE_SCHEMA",
-      "SELECT",
-      "CREATE_TABLE",
-      "MODIFY"
-    ]
-  }
 }
 
 # No table resource exists here on purpose: each environment's job creates and owns

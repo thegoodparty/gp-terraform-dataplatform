@@ -27,14 +27,12 @@ locals {
     warehouse_name = "wh-gp-api"
   }
 
-  # The finance mart, and the schema Airbyte lands its raw finance ingests in.
-  # Read access is scoped to business and finance ops. The upstream systems are
-  # deliberately not named here: which vendors we run finance on is itself
-  # restricted, and this repo is a wider audience than the mart.
-  finance = {
-    mart          = "finance"
-    source_schema = "airbyte_source_finance"
-  }
+  # The restricted mart for financial data, read by business and finance ops.
+  # Its raw landing schema, airbyte_source_finance, is not declared here:
+  # Airbyte creates it and so owns it, as with the general airbyte_source.
+  # The upstream systems are deliberately not named anywhere in this config,
+  # since which vendors we run finance on is itself restricted.
+  finance_mart = "finance"
 
   # Marts that are not readable by all data users. Each is reached only through
   # its own mart_<name>_readers group, whose membership is assigned in the console.
@@ -46,7 +44,7 @@ locals {
   restricted_marts = [
     "sales_reverse_etl",
     local.gp_api.mart,
-    local.finance.mart,
+    local.finance_mart,
   ]
 
   # Marts that all data users should be able to read.
