@@ -40,16 +40,11 @@ astro_contact_emails = ["your-email@example.com"]
 
 # Note: Astro environment configs (dev/prod) are defined in locals.tf
 
-# =============================================================================
-# People-API loader storage. Resource names are fixed locals in
-# loader_storage.tf. Only the tunables below are variables; defaults shown.
-# =============================================================================
-# aws_region                   = "us-west-2"
-# loader_export_lifecycle_days = 30
-# loader_db_cluster_prefix     = "gp-people-db"   # scopes the rds-s3-import trust to the loader's clusters; must match new_cluster_id
+# AWS region (default shown)
+# aws_region = "us-west-2"
 
 # sts:ExternalId per environment for the Astro workload-identity role trust policies
-# (gp-people-rds-admin-<env>, gp-l2-voter-files-<env>). In CI this is assembled from
+# (gp-l2-voter-files-<env>, etc.). In CI this is assembled from
 # the ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV/_PROD repository Variables (same values as
 # omni). Locally, set it to match the live roles' trust policies.
 # astro_workload_external_ids = { dev = "<uuid>", prod = "<uuid>" }

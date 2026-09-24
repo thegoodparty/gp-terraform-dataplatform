@@ -67,7 +67,7 @@ jobs:
             exit 1
           fi
 
-          # The loader admin role trust policies pin these per-env sts:ExternalId
+          # The Astro workload-identity role trust policies pin these per-env sts:ExternalId
           # nonces; an empty value would rewrite the trust and break Astro's assume-role.
           if [ -z "$ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV" ] || [ -z "$ASTRO_ASSUME_ROLE_EXTERNAL_ID_PROD" ]; then
             echo "::error::ASTRO_ASSUME_ROLE_EXTERNAL_ID_DEV/_PROD is empty or not configured"

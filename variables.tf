@@ -75,42 +75,19 @@ variable "astro_contact_emails" {
 # Both Airflow environments live in our single infrastructure
 
 # =============================================================================
-# People-API loader storage
-# Dedicated S3 bucket the loader's `unload` step writes to (Databricks) and the
-# `copy` step reads from (Aurora), plus the UC external location + storage
-# credential + dedicated service principal that govern Databricks access.
+# AWS (IAM roles the Airflow DAGs assume, S3 lifecycle rules)
 # =============================================================================
 
 variable "aws_region" {
-  description = "AWS region for the loader S3 bucket + IAM"
+  description = "AWS region for the platform's IAM roles and S3 configuration"
   type        = string
   default     = "us-west-2"
-}
-
-# Loader resource names (bucket, IAM roles, UC credential/location, SP) are fixed
-# single-environment constants, defined as locals in loader_storage.tf rather than
-# variables, matching the repo's convention of literal resource names.
-
-variable "loader_export_lifecycle_days" {
-  description = "Expire voter_export_*/ objects after this many days (per-run exports are disposable post-cutover)."
-  type        = number
-  default     = 30
-}
-
-variable "loader_db_cluster_prefix" {
-  description = <<-EOT
-    Name prefix of the Aurora clusters the loader provisions (loader config.py names them
-    gp-people-db-<run_date>). Used to scope the rds-s3-import role's trust to aws:SourceArn,
-    so only the loader's own clusters can assume it. Must match the loader's new_cluster_id.
-  EOT
-  type        = string
-  default     = "gp-people-db"
 }
 
 variable "astro_workload_external_ids" {
   description = <<-EOT
     sts:ExternalId the Astro workload-identity role must present when assuming
-    any role Airflow uses (gp-people-rds-admin-<env>, gp-l2-voter-files-<env>, etc.)
+    any role Airflow uses (gp-l2-voter-files-<env>, etc.)
     (confused-deputy guard). Map keyed by environment
     ("dev"/"prod"). Not a credential (a fixed nonce), so it is a repository
     Variable, not a Secret: CI assembles it in terraform.tfvars from

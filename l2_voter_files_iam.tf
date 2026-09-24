@@ -7,8 +7,8 @@
 # path of its own beyond verifying its own writes.
 #
 # Replaces an IAM user with a static access key that was created by hand to get
-# the first end-to-end test moving. One role per Airflow environment, matching
-# gp-people-rds-admin-<env> in loader_iam.tf.
+# the first end-to-end test moving. One role per Airflow environment, keyed by
+# local.astro_workload_identities.
 # =============================================================================
 
 locals {

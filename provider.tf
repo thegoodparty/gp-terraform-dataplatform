@@ -20,10 +20,10 @@ provider "astro" {
   organization_id = var.astro_organization_id
 }
 
-# AWS provider for the people-api loader's S3 storage + IAM.
+# AWS provider for the IAM roles the Airflow DAGs assume and the S3 lifecycle rules.
 # Credentials come from the standard AWS chain (CI role / local profile).
-# Project is tagged per-resource (local.loader_tags); default_tags is reserved for
-# repo-wide tags so future unrelated AWS resources don't inherit a loader Project.
+# Project is tagged per-resource; default_tags is reserved for repo-wide tags so
+# unrelated AWS resources don't inherit one feature's Project.
 provider "aws" {
   region = var.aws_region
 
@@ -33,3 +33,5 @@ provider "aws" {
     }
   }
 }
+
+data "aws_caller_identity" "current" {}
