@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Terraform for the GoodParty data platform: Databricks Unity Catalog (catalogs, schemas, grants, service principals, warehouses), Astronomer/Astro deployments, and the supporting AWS for the people-api loader (S3 bucket + IAM). Backend is S3 remote state; CI runs `terraform plan` on every PR, and apply is a gated post-merge `Deploy` workflow (Actions → Deploy, uncheck "Dry run").
+Terraform for the GoodParty data platform: Databricks Unity Catalog (catalogs, schemas, grants, service principals, warehouses), Astronomer/Astro deployments, and the supporting AWS IAM and S3 configuration for the Airflow DAGs. Backend is S3 remote state; CI runs `terraform plan` on every PR, and apply is a gated post-merge `Deploy` workflow (Actions → Deploy, uncheck "Dry run").
 
 ## Conventions
 

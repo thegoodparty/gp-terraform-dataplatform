@@ -1,12 +1,12 @@
 # Gold-match Bedrock access. The matcher pod runs as its Astro deployment's
 # Astronomer-managed workload identity, a role in Astronomer's account we can
 # trust but not edit, so the Bedrock grant sits on a role HERE that trusts that
-# identity and the pod assumes it (the gp-people-rds-admin shape in
-# loader_iam.tf); calls then authorize and bill as this account.
+# identity and the pod assumes it (the gp-l2-voter-files shape in
+# l2_voter_files_iam.tf); calls then authorize and bill as this account.
 
 locals {
   # Both Bedrock clients pin us-east-1 (bedrock_clients/embedding.py and
-  # structured.py); var.aws_region is the loader's us-west-2 and must not leak
+  # structured.py); var.aws_region is us-west-2 and must not leak
   # in here. The global profile may serve a request from any region and AWS
   # evaluates the global leg against a region-less model ARN, so the Haiku
   # model's region is wildcarded (matching empty and any region alike).
@@ -29,7 +29,7 @@ resource "aws_iam_role" "gold_match_bedrock" {
   description = "Assumed by the gold-match daily pod on the ${each.key} Astro deployment to call Bedrock."
   tags        = { Project = "gold-match", Environment = each.key }
 
-  # Trust policy shared with the loader and L2 roles (local.astro_assume_role_policy).
+  # Trust policy shared with the L2 voter-files roles (local.astro_assume_role_policy).
   assume_role_policy = local.astro_assume_role_policy[each.key]
 }
 
