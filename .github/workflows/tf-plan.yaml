@@ -2,6 +2,16 @@ name: Terraform Plan
 
 on:
   workflow_call:
+    inputs:
+      role-to-assume:
+        description: >-
+          IAM role this plan runs as. Required, and deliberately has no
+          default: the caller knows whether it is planning unreviewed pull
+          request code or planning immediately before an apply, and this
+          workflow does not. A default here would be a silent fallback, and
+          the only value worth defaulting to is the admin deploy role.
+        required: true
+        type: string
     outputs:
       has_changes:
         description: 'Whether the plan has changes'
@@ -48,16 +58,21 @@ jobs:
       # `github.event_name` inside a called workflow is the event that
       # triggered the caller, so this distinguishes the two.
       #
-      # Two repository variables, matching the two roles.
-      # `vars.AWS_ROLE_ARN` is the shared deploy role: it carries
-      # AdministratorAccess and its trust admits `refs/pull/N/merge`, so
-      # before this change every plan on a pull request ran PR-authored
-      # Terraform with admin. `vars.AWS_PLAN_ROLE_ARN` is the read-only plan
-      # role. Step 5 of docs/deploy-role-trust.md in thegoodparty/ops.
+      # `required: true` on the input only checks the key is present, not
+      # that it is non-empty. An unset repository variable expands to '' and
+      # would reach configure-aws-credentials as a blank role, so fail here
+      # instead, loudly and before any credentials exist.
+      - name: Require a role
+        if: inputs.role-to-assume == ''
+        run: |
+          echo "::error::role-to-assume is empty. The caller must pass a role" \
+               "ARN; check that the repository variable it reads is set."
+          exit 1
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ github.event_name == 'pull_request' && vars.AWS_PLAN_ROLE_ARN || vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ inputs.role-to-assume }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Setup Terraform
