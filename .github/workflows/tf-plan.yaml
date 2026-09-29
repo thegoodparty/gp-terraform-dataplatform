@@ -48,15 +48,16 @@ jobs:
       # `github.event_name` inside a called workflow is the event that
       # triggered the caller, so this distinguishes the two.
       #
-      # `vars.AWS_ROLE_ARN` is the shared deploy role. It carries
+      # Two repository variables, matching the two roles.
+      # `vars.AWS_ROLE_ARN` is the shared deploy role: it carries
       # AdministratorAccess and its trust admits `refs/pull/N/merge`, so
       # before this change every plan on a pull request ran PR-authored
-      # Terraform with admin. Step 5 of docs/deploy-role-trust.md in
-      # thegoodparty/ops.
+      # Terraform with admin. `vars.AWS_PLAN_ROLE_ARN` is the read-only plan
+      # role. Step 5 of docs/deploy-role-trust.md in thegoodparty/ops.
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ github.event_name == 'pull_request' && 'arn:aws:iam::333022194791:role/github-actions-pulumi-plan' || vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ github.event_name == 'pull_request' && vars.AWS_PLAN_ROLE_ARN || vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Setup Terraform
