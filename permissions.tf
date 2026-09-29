@@ -596,3 +596,14 @@ resource "databricks_grant" "ai_infra_read" {
   principal  = data.databricks_service_principal.ai_infra.application_id
   privileges = ["USE_SCHEMA", "SELECT"]
 }
+
+# The finance staging models are ephemeral, so dbt reads these raw tables
+# directly when it builds mart_finance. dbt_cloud reaches them through its
+# catalog-wide SELECT today; pinning it here means narrowing that grant later
+# cannot silently break the finance build. Airbyte owns this schema, so a
+# singular grant: nothing here claims authority over its other grants.
+resource "databricks_grant" "airbyte_source_finance_dbt_cloud" {
+  schema     = "${databricks_catalog.main.name}.airbyte_source_finance"
+  principal  = data.databricks_service_principal.dbt_cloud.application_id
+  privileges = ["USE_SCHEMA", "SELECT"]
+}
