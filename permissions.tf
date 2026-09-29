@@ -50,10 +50,8 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
-  # USE_CATALOG only: catalog-level USE_SCHEMA inherits into every schema,
-  # finance included. This group reads the shared marts through its membership
-  # in each mart_*_readers group (groups.tf), and exports_zapier is granted
-  # directly below, so the catalog-wide grant bought nothing but reach.
+  # No USE_SCHEMA: it inherits into every schema, finance included. Mart access
+  # comes from this group's mart_*_readers membership instead.
   grant {
     principal  = data.databricks_group.data_users.display_name
     privileges = ["USE_CATALOG"]
