@@ -17,6 +17,10 @@ jobs:
   plan:
     name: Plan
     uses: ./.github/workflows/tf-plan.yaml
+    # Deploy role: this plan gates the apply that follows, so it must be
+      # produced by the principal that will perform it.
+    with:
+      role-to-assume: ${{ vars.AWS_ROLE_ARN }}
     secrets: inherit
 
   apply:

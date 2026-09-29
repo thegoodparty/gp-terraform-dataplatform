@@ -9,6 +9,9 @@ jobs:
   plan:
     name: Plan
     uses: ./.github/workflows/tf-plan.yaml
+    # Read-only plan role: this runs pull request code.
+    with:
+      role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
     secrets: inherit
 
   comment:
