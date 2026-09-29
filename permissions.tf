@@ -30,10 +30,13 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
   }
 
-  # airbyte service principal gets catalog access
+  # Airbyte creates its own per-source landing schema (airbyte_source*) on first
+  # sync and owns it, so table/volume privileges follow from ownership rather
+  # than grants here. The Databricks destination writes through Unity Catalog
+  # staging volumes, which a Terraform-owned schema would not cover.
   grant {
     principal  = data.databricks_service_principal.airbyte.application_id
-    privileges = ["USE_CATALOG"]
+    privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
   }
 
   # Existing groups get catalog access
