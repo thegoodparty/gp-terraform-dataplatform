@@ -139,7 +139,9 @@ resource "databricks_group_member" "genie_civics_in_mart_civics_readers" {
   member_id = databricks_group.genie_civics.id
 }
 
-# Add sigma SP to mart reader groups for the POV test cases.
+# The single Sigma connection runs as the sigma SP, so every mart Sigma serves is
+# a membership here. Which Sigma users see which schema is decided in Sigma's own
+# grants (Sigma is PAT-only on our plan, so Databricks never sees the person).
 # Inherits: USE_CATALOG (via catalog_main),
 #           USE_SCHEMA + SELECT (via mart_schemas)
 # SQL warehouse CAN_USE on wh-sigma-pov is granted in permissions.tf.
@@ -152,6 +154,14 @@ resource "databricks_group_member" "sigma_in_mart_civics_readers" {
 resource "databricks_group_member" "sigma_in_mart_analytics_readers" {
   provider  = databricks.account
   group_id  = databricks_group.mart_readers_account["analytics"].id
+  member_id = databricks_service_principal.sigma.id
+}
+
+# Finance is restricted: in Sigma, only the finance team holds a grant on this
+# schema, and non-admin seats cannot write custom SQL against the connection.
+resource "databricks_group_member" "sigma_in_mart_finance_readers" {
+  provider  = databricks.account
+  group_id  = databricks_group.mart_readers_account[local.finance_mart].id
   member_id = databricks_service_principal.sigma.id
 }
 
