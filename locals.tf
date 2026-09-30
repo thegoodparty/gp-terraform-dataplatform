@@ -93,6 +93,19 @@ locals {
     worker_concurrency = 1
   }
 
+  # What ai-infra reads, standing in for the catalog-wide SELECT it used to
+  # hold. Derived from 90 days of system.access.table_lineage, so a schema it
+  # reads less often than that has to be added here when it breaks.
+  ai_infra_mart_reads = ["civics", "win_agents", "gp_api"]
+
+  ai_infra_read_schemas = [
+    "dbt",
+    "dbt_source",
+    "airbyte_source",
+    "airbyte_internal",
+    "model_predictions",
+  ]
+
   # Astro deployment environments
   # Both dev and prod Airflow environments live in our single infrastructure
   astro_environments = {

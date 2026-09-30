@@ -54,11 +54,6 @@ data "databricks_group" "ml_users" {
   display_name = "ml-users"
 }
 
-data "databricks_group" "ai_owners" {
-  provider     = databricks.account
-  display_name = "ai-owners"
-}
-
 data "databricks_group" "data_engineers" {
   provider     = databricks.account
   display_name = "data-engineers"

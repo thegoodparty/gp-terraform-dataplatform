@@ -23,11 +23,13 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "MODIFY", "CREATE_TABLE", "CREATE_SCHEMA"]
   }
 
-  # dbt_cloud_staging service principal gets read access across catalog,
-  # write access is scoped to the dbt_staging schema only
+  # USE_CATALOG only. Catalog-wide SELECT reached the finance schemas, and this
+  # principal has run no query and read no table in 90 days. Note for whoever
+  # revives the staging environment: its dbt_staging grants below carry no
+  # SELECT, so the catalog grant was doing that work and will need replacing.
   grant {
     principal  = databricks_service_principal.dbt_cloud_staging.application_id
-    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+    privileges = ["USE_CATALOG"]
   }
 
   # Airbyte creates its own per-source landing schema (airbyte_source*) on first
@@ -50,21 +52,20 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
+  # No USE_SCHEMA: it inherits into every schema, finance included. Mart access
+  # comes from this group's mart_*_readers membership instead.
   grant {
     principal  = data.databricks_group.data_users.display_name
-    privileges = ["USE_CATALOG", "USE_SCHEMA"]
+    privileges = ["USE_CATALOG"]
   }
 
-  # ai-owners group gets schema access across entire catalog
-  grant {
-    principal  = data.databricks_group.ai_owners.display_name
-    privileges = ["USE_SCHEMA"]
-  }
-
-  # data-engineers group gets read access and grant management across entire catalog
+  # USE_CATALOG and USE_SCHEMA are not a widening. This group's reads have been
+  # riding on its members' data users membership for the traversal privileges,
+  # which the grant above no longer carries; MANAGE implies neither. Without
+  # them the SELECT here reaches nothing outside the marts.
   grant {
     principal  = data.databricks_group.data_engineers.display_name
-    privileges = ["SELECT", "MANAGE"]
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "MANAGE"]
   }
 
   # dbt-users get catalog access and can create schemas
@@ -73,10 +74,11 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
   }
 
-  # ai-infra service principal gets schema access and read access across entire catalog
+  # USE_CATALOG only. Catalog-wide SELECT reached the finance schemas; the
+  # schemas this principal actually reads are granted individually below.
   grant {
     principal  = data.databricks_service_principal.ai_infra.application_id
-    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+    privileges = ["USE_CATALOG"]
   }
 
   # zapier service principal gets catalog access for zapier_exports schema
@@ -234,6 +236,20 @@ resource "databricks_grants" "mart_schemas" {
       "USE_SCHEMA",
       "SELECT"
     ]
+  }
+
+  # Replaces ai-infra's catalog-wide SELECT with the marts it actually reads.
+  # An allowlist rather than a finance carve-out, so a new mart is private to
+  # this principal until someone adds it deliberately.
+  dynamic "grant" {
+    for_each = contains(local.ai_infra_mart_reads, each.key) ? [1] : []
+    content {
+      principal = data.databricks_service_principal.ai_infra.application_id
+      privileges = [
+        "USE_SCHEMA",
+        "SELECT"
+      ]
+    }
   }
 
   depends_on = [
@@ -568,4 +584,31 @@ resource "databricks_grant" "dbt_source_airflow_prod" {
   schema     = "${databricks_catalog.main.name}.dbt_source"
   principal  = databricks_service_principal.airflow["airflow"].application_id
   privileges = ["CREATE_TABLE", "MODIFY", "MANAGE"]
+}
+
+# =============================================================================
+# ai-infra read scope
+# =============================================================================
+# Replaces the catalog-wide SELECT this principal used to hold, which reached
+# the finance schemas along with everything else. These are the non-mart schemas
+# it actually read over the last 90 days; the marts it reads are granted in
+# mart_schemas above, finance excluded. Singular grants: the authoritative
+# plural on these schemas would revoke everyone else's.
+resource "databricks_grant" "ai_infra_read" {
+  for_each = toset(local.ai_infra_read_schemas)
+
+  schema     = "${databricks_catalog.main.name}.${each.value}"
+  principal  = data.databricks_service_principal.ai_infra.application_id
+  privileges = ["USE_SCHEMA", "SELECT"]
+}
+
+# The finance staging models are ephemeral, so dbt reads these raw tables
+# directly when it builds mart_finance. dbt_cloud reaches them through its
+# catalog-wide SELECT today; pinning it here means narrowing that grant later
+# cannot silently break the finance build. Airbyte owns this schema, so a
+# singular grant: nothing here claims authority over its other grants.
+resource "databricks_grant" "airbyte_source_finance_dbt_cloud" {
+  schema     = "${databricks_catalog.main.name}.airbyte_source_finance"
+  principal  = data.databricks_service_principal.dbt_cloud.application_id
+  privileges = ["USE_SCHEMA", "SELECT"]
 }
