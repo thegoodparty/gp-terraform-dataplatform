@@ -24,7 +24,9 @@ resource "databricks_grants" "catalog_main" {
   }
 
   # USE_CATALOG only. Catalog-wide SELECT reached the finance schemas, and this
-  # principal has not run a query in 90 days; its dbt_staging grants are below.
+  # principal has run no query and read no table in 90 days. Note for whoever
+  # revives the staging environment: its dbt_staging grants below carry no
+  # SELECT, so the catalog grant was doing that work and will need replacing.
   grant {
     principal  = databricks_service_principal.dbt_cloud_staging.application_id
     privileges = ["USE_CATALOG"]
@@ -57,10 +59,13 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
-  # data-engineers group gets read access and grant management across entire catalog
+  # USE_CATALOG and USE_SCHEMA are not a widening. This group's reads have been
+  # riding on its members' data users membership for the traversal privileges,
+  # which the grant above no longer carries; MANAGE implies neither. Without
+  # them the SELECT here reaches nothing outside the marts.
   grant {
     principal  = data.databricks_group.data_engineers.display_name
-    privileges = ["SELECT", "MANAGE"]
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "MANAGE"]
   }
 
   # dbt-users get catalog access and can create schemas
