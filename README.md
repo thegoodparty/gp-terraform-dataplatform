@@ -157,8 +157,11 @@ terraform apply
 | Secret | Description |
 |--------|-------------|
 | `ASTRO_API_TOKEN` | Astronomer API token |
-| `DATABRICKS_CLIENT_ID` | Databricks service principal client ID |
-| `DATABRICKS_CLIENT_SECRET` | Databricks service principal secret |
+| `DATABRICKS_CLIENT_ID` | Application ID of the `github-action` service principal |
+
+There is no Databricks client secret. CI authenticates via GitHub OIDC using the
+federation policies in `service_principals.tf` (`github_action_ci`). Each subject
+is pinned to this repo: pull requests, `main`, and the `production` environment.
 
 #### 3. Add Variables
 

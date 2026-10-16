@@ -46,8 +46,8 @@ variable "catalog_storage_bucket" {
 # =============================================================================
 # Astronomer (Astro) Variables
 # =============================================================================
-# Note: Databricks service principal auth uses environment variables in CI:
-#   DATABRICKS_CLIENT_ID and DATABRICKS_CLIENT_SECRET
+# Note: in CI, Databricks auth is GitHub OIDC federation as the github-action SP
+# (DATABRICKS_CLIENT_ID + DATABRICKS_AUTH_TYPE=github-oidc); no client secret.
 
 variable "astro_organization_id" {
   description = "Astronomer organization ID"
