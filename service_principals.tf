@@ -92,7 +92,8 @@ resource "databricks_mws_permission_assignment" "icp_finder" {
   permissions  = ["USER"]
 }
 
-# Read-only SP for the analytics governance loop. OAuth secret is manual; see README.
+# Read-only SP for the analytics governance loop. Authenticates via GitHub OIDC
+# federation (below), so there is no client secret to rotate.
 resource "databricks_service_principal" "product_analytics" {
   provider     = databricks.account
   display_name = "product_analytics"
@@ -107,6 +108,24 @@ resource "databricks_mws_permission_assignment" "product_analytics" {
   workspace_id = var.workspace_id
   principal_id = databricks_service_principal.product_analytics.id
   permissions  = ["USER"]
+}
+
+# Created via the CLI and adopted here. Only runs on omni's main branch can
+# authenticate; a job-level `environment:` would change the token subject and break this.
+import {
+  to = databricks_service_principal_federation_policy.product_analytics_github
+  id = "77669857904984,6db93881-086e-4c12-b9a4-e9393a8c48b5"
+}
+
+resource "databricks_service_principal_federation_policy" "product_analytics_github" {
+  provider             = databricks.account
+  service_principal_id = tonumber(databricks_service_principal.product_analytics.id)
+
+  oidc_policy = {
+    issuer    = "https://token.actions.githubusercontent.com"
+    audiences = ["https://github.com/thegoodparty"]
+    subject   = "repo:thegoodparty/omni:ref:refs/heads/main"
+  }
 }
 
 # Win and Serve product agent service principals. OAuth M2M credentials generated manually.
