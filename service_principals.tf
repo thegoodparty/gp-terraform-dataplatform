@@ -110,13 +110,8 @@ resource "databricks_mws_permission_assignment" "product_analytics" {
   permissions  = ["USER"]
 }
 
-# Created via the CLI and adopted here. Only runs on omni's main branch can
-# authenticate; a job-level `environment:` would change the token subject and break this.
-import {
-  to = databricks_service_principal_federation_policy.product_analytics_github
-  id = "77669857904984,6db93881-086e-4c12-b9a4-e9393a8c48b5"
-}
-
+# Only runs on omni's main branch can authenticate; a job-level `environment:`
+# would change the token subject and break this.
 resource "databricks_service_principal_federation_policy" "product_analytics_github" {
   provider             = databricks.account
   service_principal_id = tonumber(databricks_service_principal.product_analytics.id)
