@@ -79,13 +79,14 @@ This creates:
 
 ### Service principal: `product_analytics`
 
-Read-only SP for the analytics governance loop. Terraform manages the principal
-and its grants; the OAuth secret is created manually so it stays out of remote
-state.
+Read-only SP for the analytics governance loop (`omni`'s
+`.github/workflows/analytics-governance.yml`). Terraform manages the principal,
+its grants, and a GitHub OIDC federation policy, so the workflow authenticates
+with a short-lived GitHub token and no client secret exists.
 
-To rotate: generate a new secret in the Databricks console (Settings > Identity
-and access > Service principals > `product_analytics` > Secrets), update the
-stored copies, then delete the old one.
+The policy trusts `repo:thegoodparty/omni:ref:refs/heads/main` with audience
+`https://github.com/thegoodparty`. Adding a job-level `environment:` to that
+workflow changes the token subject and breaks auth until the policy is updated.
 
 ---
 

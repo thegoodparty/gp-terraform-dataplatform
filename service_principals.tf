@@ -92,7 +92,8 @@ resource "databricks_mws_permission_assignment" "icp_finder" {
   permissions  = ["USER"]
 }
 
-# Read-only SP for the analytics governance loop. OAuth secret is manual; see README.
+# Read-only SP for the analytics governance loop. Authenticates via GitHub OIDC
+# federation (below), so there is no client secret to rotate.
 resource "databricks_service_principal" "product_analytics" {
   provider     = databricks.account
   display_name = "product_analytics"
@@ -107,6 +108,19 @@ resource "databricks_mws_permission_assignment" "product_analytics" {
   workspace_id = var.workspace_id
   principal_id = databricks_service_principal.product_analytics.id
   permissions  = ["USER"]
+}
+
+# Only runs on omni's main branch can authenticate; a job-level `environment:`
+# would change the token subject and break this.
+resource "databricks_service_principal_federation_policy" "product_analytics_github" {
+  provider             = databricks.account
+  service_principal_id = tonumber(databricks_service_principal.product_analytics.id)
+
+  oidc_policy = {
+    issuer    = "https://token.actions.githubusercontent.com"
+    audiences = ["https://github.com/thegoodparty"]
+    subject   = "repo:thegoodparty/omni:ref:refs/heads/main"
+  }
 }
 
 # Win and Serve product agent service principals. OAuth M2M credentials generated manually.
@@ -144,4 +158,28 @@ resource "databricks_mws_permission_assignment" "gp_api" {
   workspace_id = var.workspace_id
   principal_id = databricks_service_principal.gp_api.id
   permissions  = ["USER"]
+}
+
+# GitHub OIDC federation for this repo's CI, which runs as the github-action SP
+# (data source in groups.tf). One subject per caller: PR plans, Deploy's plan on
+# main, and the apply job, which runs in the `production` environment.
+locals {
+  terraform_ci_oidc_subjects = {
+    pull_request = "repo:thegoodparty/gp-terraform-dataplatform:pull_request"
+    main         = "repo:thegoodparty/gp-terraform-dataplatform:ref:refs/heads/main"
+    production   = "repo:thegoodparty/gp-terraform-dataplatform:environment:production"
+  }
+}
+
+resource "databricks_service_principal_federation_policy" "github_action_ci" {
+  for_each             = local.terraform_ci_oidc_subjects
+  provider             = databricks.account
+  service_principal_id = tonumber(data.databricks_service_principal.github_action.id)
+  description          = "gp-terraform-dataplatform CI: ${each.key}"
+
+  oidc_policy = {
+    issuer    = "https://token.actions.githubusercontent.com"
+    audiences = ["https://github.com/thegoodparty"]
+    subject   = each.value
+  }
 }
