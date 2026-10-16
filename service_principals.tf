@@ -164,3 +164,27 @@ resource "databricks_mws_permission_assignment" "gp_api" {
   principal_id = databricks_service_principal.gp_api.id
   permissions  = ["USER"]
 }
+
+# GitHub OIDC federation for this repo's CI, which runs as the github-action SP
+# (data source in groups.tf). One subject per caller: PR plans, Deploy's plan on
+# main, and the apply job, which runs in the `production` environment.
+locals {
+  terraform_ci_oidc_subjects = {
+    pull_request = "repo:thegoodparty/gp-terraform-dataplatform:pull_request"
+    main         = "repo:thegoodparty/gp-terraform-dataplatform:ref:refs/heads/main"
+    production   = "repo:thegoodparty/gp-terraform-dataplatform:environment:production"
+  }
+}
+
+resource "databricks_service_principal_federation_policy" "github_action_ci" {
+  for_each             = local.terraform_ci_oidc_subjects
+  provider             = databricks.account
+  service_principal_id = tonumber(data.databricks_service_principal.github_action.id)
+  description          = "gp-terraform-dataplatform CI: ${each.key}"
+
+  oidc_policy = {
+    issuer    = "https://token.actions.githubusercontent.com"
+    audiences = ["https://github.com/thegoodparty"]
+    subject   = each.value
+  }
+}
