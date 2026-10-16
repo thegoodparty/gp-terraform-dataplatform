@@ -47,12 +47,14 @@ jobs:
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+          DATABRICKS_AUTH_TYPE: github-oidc
+          DATABRICKS_TOKEN_AUDIENCE: https://github.com/thegoodparty
         run: terraform init
 
       - name: Terraform Apply
         env:
           ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+          DATABRICKS_AUTH_TYPE: github-oidc
+          DATABRICKS_TOKEN_AUDIENCE: https://github.com/thegoodparty
         run: terraform apply -lock-timeout=5m -auto-approve tfplan
