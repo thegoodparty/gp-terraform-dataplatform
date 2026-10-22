@@ -50,6 +50,23 @@ resource "databricks_entitlements" "gp_api_mirror" {
   depends_on = [databricks_mws_permission_assignment.gp_api_mirror]
 }
 
+# CI sets the pipelines' and job's run_as to this SP, which needs the User role.
+# The rule set is authoritative, so it keeps the creator's Manager role too.
+resource "databricks_access_control_rule_set" "gp_api_mirror" {
+  provider = databricks.account
+  name     = "accounts/${var.databricks_account_id}/servicePrincipals/${databricks_service_principal.gp_api_mirror.application_id}/ruleSets/default"
+
+  grant_rules {
+    principals = [data.databricks_service_principal.github_action.acl_principal_id]
+    role       = "roles/servicePrincipal.manager"
+  }
+
+  grant_rules {
+    principals = [data.databricks_service_principal.github_action.acl_principal_id]
+    role       = "roles/servicePrincipal.user"
+  }
+}
+
 # One readers group per mirror schema, as with the marts. Not nested into data
 # users: the mirror holds users' personal data, so membership is assigned in
 # the console.
@@ -134,19 +151,20 @@ resource "databricks_secret_acl" "gp_api_mirror_admin" {
 
 # Databricks requires USE_CONNECTION of whoever creates the pipelines (this
 # repo's CI, as github-action) as well as of the principal they run as.
-resource "databricks_grants" "gp_api_mirror_connection" {
+# Singular grants because databricks_grants rejects USE_CONNECTION on a
+# connection: databricks/terraform-provider-databricks#5398.
+resource "databricks_grant" "gp_api_mirror_connection" {
   for_each           = local.gp_api_mirror_connected
   foreign_connection = "gp_api_${each.key}_lakeflow"
+  principal          = databricks_service_principal.gp_api_mirror.application_id
+  privileges         = ["USE_CONNECTION"]
+}
 
-  grant {
-    principal  = databricks_service_principal.gp_api_mirror.application_id
-    privileges = ["USE_CONNECTION"]
-  }
-
-  grant {
-    principal  = data.databricks_service_principal.github_action.application_id
-    privileges = ["USE_CONNECTION"]
-  }
+resource "databricks_grant" "gp_api_mirror_connection_github_action" {
+  for_each           = local.gp_api_mirror_connected
+  foreign_connection = "gp_api_${each.key}_lakeflow"
+  principal          = data.databricks_service_principal.github_action.application_id
+  privileges         = ["USE_CONNECTION"]
 }
 
 resource "databricks_pipeline" "gp_api_mirror_gateway" {
@@ -196,9 +214,11 @@ resource "databricks_pipeline" "gp_api_mirror_gateway" {
   }
 
   depends_on = [
-    databricks_grants.gp_api_mirror_connection,
+    databricks_grant.gp_api_mirror_connection,
+    databricks_grant.gp_api_mirror_connection_github_action,
     databricks_grants.gp_api_mirror_schema,
     databricks_entitlements.gp_api_mirror,
+    databricks_access_control_rule_set.gp_api_mirror,
   ]
 }
 
@@ -312,6 +332,12 @@ resource "databricks_permissions" "gp_api_mirror_ingestion" {
   access_control {
     group_name       = data.databricks_group.admin_group.display_name
     permission_level = "CAN_MANAGE"
+  }
+
+  # The loop job runs as sp_gp_api_mirror and starts this pipeline's updates.
+  access_control {
+    service_principal_name = databricks_service_principal.gp_api_mirror.application_id
+    permission_level       = "CAN_RUN"
   }
 }
 

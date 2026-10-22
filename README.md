@@ -104,7 +104,9 @@ not nested into `data users`; add members in the console, one principal at a
 time.
 
 Terraform manages the `sp_gp_api_mirror` service principal (with cluster
-creation, for the classic-compute gateway), both schemas and their grants, the
+creation, for the classic-compute gateway, and a rule set giving `github-action`
+the Service Principal User role so CI can set it as `run_as`), both schemas and
+their grants, the
 `gp-api-lakeflow-<env>` secret scopes (`admin group` gets MANAGE), and, per
 env, the `gp-api-mirror-<env>-gateway` and `gp-api-mirror-<env>-ingestion`
 pipelines and the `gp-api-mirror-<env>-ingestion-loop` job. Failure emails go
