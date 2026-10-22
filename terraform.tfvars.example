@@ -40,6 +40,9 @@ astro_contact_emails = ["your-email@example.com"]
 
 # Note: Astro environment configs (dev/prod) are defined in locals.tf
 
+# Failure emails for the gp-api Postgres mirror (CI reuses ASTRO_CONTACT_EMAILS)
+gp_api_mirror_notification_emails = ["your-email@example.com"]
+
 # AWS region (default shown)
 # aws_region = "us-west-2"
 

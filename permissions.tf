@@ -11,6 +11,19 @@ resource "databricks_grants" "catalog_main" {
     }
   }
 
+  dynamic "grant" {
+    for_each = databricks_group.gp_api_mirror_readers
+    content {
+      principal  = grant.value.display_name
+      privileges = ["USE_CATALOG"]
+    }
+  }
+
+  grant {
+    principal  = databricks_service_principal.gp_api_mirror.application_id
+    privileges = ["USE_CATALOG"]
+  }
+
   # dbt-developers get catalog access and can create schemas
   grant {
     principal  = databricks_group.dbt_developers_account.display_name

@@ -75,6 +75,31 @@ variable "astro_contact_emails" {
 # Both Airflow environments live in our single infrastructure
 
 # =============================================================================
+# gp-api Postgres mirror (gp_api_mirror.tf)
+# =============================================================================
+
+variable "gp_api_mirror_connected_envs" {
+  description = <<-EOT
+    Mirror environments ("dev", "prod") whose Unity Catalog connection and
+    Postgres replication slot already exist. Only these get the connection
+    grant, the gateway, the ingestion pipeline and the loop job. The gateway
+    starts as soon as it is created, so add an env only after its slot exists.
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for env in var.gp_api_mirror_connected_envs : contains(["dev", "prod"], env)])
+    error_message = "Each entry must be \"dev\" or \"prod\"."
+  }
+}
+
+variable "gp_api_mirror_notification_emails" {
+  description = "Recipients of the mirror's gateway, pipeline and job failure emails. CI fills it from ASTRO_CONTACT_EMAILS."
+  type        = list(string)
+}
+
+# =============================================================================
 # AWS (IAM roles the Airflow DAGs assume, S3 lifecycle rules)
 # =============================================================================
 
