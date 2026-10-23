@@ -138,13 +138,6 @@ resource "databricks_secret_scope" "gp_api_mirror" {
   name     = "gp-api-lakeflow-${each.key}"
 }
 
-resource "databricks_secret_acl" "gp_api_mirror_admin" {
-  for_each   = local.gp_api_mirror
-  scope      = databricks_secret_scope.gp_api_mirror[each.key].name
-  principal  = data.databricks_group.admin_group.display_name
-  permission = "MANAGE"
-}
-
 # Everything below needs the connection, and a continuous gateway starts the
 # moment it is created, so an env joins gp_api_mirror_connected_envs only once
 # its connection and replication slot exist.
@@ -315,38 +308,14 @@ resource "databricks_job" "gp_api_mirror_ingestion_loop" {
   }
 }
 
-resource "databricks_permissions" "gp_api_mirror_gateway" {
-  for_each    = local.gp_api_mirror_connected
-  pipeline_id = databricks_pipeline.gp_api_mirror_gateway[each.key].id
-
-  access_control {
-    group_name       = data.databricks_group.admin_group.display_name
-    permission_level = "CAN_MANAGE"
-  }
-}
-
+# Workspace admins already manage every pipeline and job, so no admin entry is needed.
 resource "databricks_permissions" "gp_api_mirror_ingestion" {
   for_each    = local.gp_api_mirror_connected
   pipeline_id = databricks_pipeline.gp_api_mirror_ingestion[each.key].id
-
-  access_control {
-    group_name       = data.databricks_group.admin_group.display_name
-    permission_level = "CAN_MANAGE"
-  }
 
   # The loop job runs as sp_gp_api_mirror and starts this pipeline's updates.
   access_control {
     service_principal_name = databricks_service_principal.gp_api_mirror.application_id
     permission_level       = "CAN_RUN"
-  }
-}
-
-resource "databricks_permissions" "gp_api_mirror_ingestion_loop" {
-  for_each = local.gp_api_mirror_connected
-  job_id   = databricks_job.gp_api_mirror_ingestion_loop[each.key].id
-
-  access_control {
-    group_name       = data.databricks_group.admin_group.display_name
-    permission_level = "CAN_MANAGE"
   }
 }
