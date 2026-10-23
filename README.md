@@ -88,6 +88,67 @@ The policy trusts `repo:thegoodparty/omni:ref:refs/heads/main` with audience
 `https://github.com/thegoodparty`. Adding a job-level `environment:` to that
 workflow changes the token subject and breaks auth until the policy is updated.
 
+### gp-api Postgres mirror (Lakeflow Connect)
+
+`gp_api_mirror.tf` keeps a copy of gp-api's Aurora database (`gpdb`, schema
+`public`) in Databricks, a few minutes behind. The Aurora side and the full
+runbook live in omni, under `packages/gp-api/deploy/databricks/lakeflow/`.
+
+| Env  | Mirror schema                              | Readers group               |
+| ---- | ------------------------------------------ | --------------------------- |
+| dev  | `goodparty_data_catalog.gp_api_mirror_dev` | `gp_api_mirror_dev_readers` |
+| prod | `goodparty_data_catalog.gp_api_mirror`     | `gp_api_mirror_readers`     |
+
+The mirror holds users' personal data. The readers groups start empty and are
+not nested into `data users`; add members in the console, one principal at a
+time.
+
+Terraform manages the `sp_gp_api_mirror` service principal (with cluster
+creation, for the classic-compute gateway, and a rule set giving `github-action`
+the Service Principal User role so CI can set it as `run_as`), both schemas and
+their grants, the
+`gp-api-lakeflow-<env>` secret scopes (`admin group` gets MANAGE), and, per
+env, the `gp-api-mirror-<env>-gateway` and `gp-api-mirror-<env>-ingestion`
+pipelines and the `gp-api-mirror-<env>-ingestion-loop` job. Failure emails go
+to the data platform's existing alert list (`ASTRO_CONTACT_EMAILS`); give the
+mirror its own list later if that gets noisy.
+
+Stays outside Terraform, because each would put a credential in state or lives
+in Postgres:
+
+- the `postgres-password` value in each secret scope
+- the Unity Catalog connections `gp_api_dev_lakeflow` and
+  `gp_api_prod_lakeflow` (omni's `create-connection.sh`)
+- the `databricks_lakeflow` Aurora role's password
+- the `databricks_lakeflow` replication slot
+
+Order, per env, dev first:
+
+1. **Apply #1** (this repo, no change needed): the service principal, schemas,
+   readers groups, grants and secret scopes.
+2. **omni runbook**: once logical replication is on, put the password in the
+   secret scope and on the Aurora role, run `create-connection.sh <env>`, then
+   have the DB admin create the replication slot.
+3. **One-line PR** here adding the env to `gp_api_mirror_connected_envs` in
+   `variables.tf`, then **apply #2**: the connection grant, the gateway, the
+   ingestion pipeline and the loop job. Do this soon after the slot exists;
+   Aurora keeps every change for an unread slot.
+
+The gateway starts when it is created, and the apply waits for it to reach
+`RUNNING`. If it fails (no slot, bad password), Terraform deletes it and the
+apply fails, so check the slot and connection before retrying.
+
+The loop job is created unpaused. Its first runs may fail with "Timeout while
+waiting for table token" while the gateway takes its first snapshot; they
+catch up on their own. To pause or unpause it (for example around a manual
+full refresh), find its ID and set `pause_status`. The next apply sets it back
+to `UNPAUSED`.
+
+```bash
+databricks jobs list --name gp-api-mirror-dev-ingestion-loop
+databricks jobs update --json '{"job_id": <id>, "new_settings": {"continuous": {"pause_status": "PAUSED"}}}'
+```
+
 ---
 
 ## Astronomer (Astro) Airflow
@@ -204,6 +265,7 @@ Reusable workflows (`tf-plan.yaml`, `tf-apply.yaml`) are called by the above.
 ├── catalog.tf                 # Databricks catalog
 ├── groups.tf                  # Databricks groups
 ├── locals.tf                  # Local values + Astro environment configs
+├── gp_api_mirror.tf           # gp-api Postgres mirror (Lakeflow Connect)
 ├── outputs.tf                 # Terraform outputs
 ├── permissions.tf             # Databricks grants
 ├── provider.tf                # Provider configuration
