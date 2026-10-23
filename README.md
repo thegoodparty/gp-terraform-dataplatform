@@ -106,9 +106,8 @@ time.
 Terraform manages the `sp_gp_api_mirror` service principal (with cluster
 creation, for the classic-compute gateway, and a rule set giving `github-action`
 the Service Principal User role so CI can set it as `run_as`), both schemas and
-their grants, the
-`gp-api-lakeflow-<env>` secret scopes (`admin group` gets MANAGE), and, per
-env, the `gp-api-mirror-<env>-gateway` and `gp-api-mirror-<env>-ingestion`
+their grants, the `gp-api-lakeflow-<env>` secret scopes, and, per env, the
+`gp-api-mirror-<env>-gateway` and `gp-api-mirror-<env>-ingestion`
 pipelines and the `gp-api-mirror-<env>-ingestion-loop` job. Failure emails go
 to the data platform's existing alert list (`ASTRO_CONTACT_EMAILS`); give the
 mirror its own list later if that gets noisy.
