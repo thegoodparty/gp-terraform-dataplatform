@@ -106,6 +106,9 @@ resource "databricks_catalog" "gp_api_pg" {
   name            = each.value.catalog
   connection_name = "gp_api_${each.key}"
   comment         = "Live, read-only view of gp-api Postgres (${each.key}) through Lakehouse Federation. Holds users' personal data; grant access deliberately."
+  # The catalog holds only mirrored metadata, so a cascading drop deletes no
+  # data, and without it a synced catalog refuses to drop.
+  force_destroy = true
 
   options = {
     database = "gpdb"
