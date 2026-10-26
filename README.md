@@ -148,6 +148,66 @@ databricks jobs list --name gp-api-mirror-dev-ingestion-loop
 databricks jobs update --json '{"job_id": <id>, "new_settings": {"continuous": {"pause_status": "PAUSED"}}}'
 ```
 
+### gp-api Postgres federation (Lakehouse Federation)
+
+`gp_api_federation.tf` lets Databricks query gp-api's Aurora database (`gpdb`)
+live, through a Unity Catalog connection and a foreign catalog. Nothing is
+copied. The AWS and Postgres side (the NLB, the VPC endpoint service, the
+`databricks_federation` role) and its runbook live in omni.
+
+| Env  | Foreign catalog | Connection    | Secret scope             | Readers group           |
+| ---- | --------------- | ------------- | ------------------------ | ----------------------- |
+| dev  | `gp_api_pg_dev` | `gp_api_dev`  | `gp-api-federation-dev`  | `gp_api_pg_dev_readers` |
+| prod | `gp_api_pg`     | `gp_api_prod` | `gp-api-federation-prod` | `gp_api_pg_readers`     |
+
+The catalogs expose users' personal data. The readers groups start empty and
+are not nested into `data users`; add members in the console. The `gp_api`
+service principal reads both catalogs.
+
+Terraform always manages the secret scopes and the readers groups. For each env
+in `gp_api_federation_envs` (a map from env to omni's
+`databricksEndpointServiceName` stack output, empty by default) it also
+manages:
+
+- the private endpoint rule on the workspace's network connectivity
+  configuration (NCC), for that endpoint service, with the env's Aurora cluster
+  endpoint as its domain name. Serverless SQL warehouses run federated queries
+  and can't use the VPC peering classic compute uses, so they need this rule.
+- the foreign catalog over database `gpdb`, using connection `gp_api_<env>`
+- `USE_CATALOG`, `USE_SCHEMA` and `SELECT` on the catalog for the readers
+  group and `gp_api`
+- `USE_CONNECTION` and `CREATE_FOREIGN_CATALOG` on the connection for
+  `github-action`, which creates the catalog. Readers need no connection grant
+  to query on serverless or standard compute.
+
+Stays outside Terraform, because each would put a credential in state or lives
+in Postgres:
+
+- the `databricks_federation` Postgres role's password (and `LOGIN`)
+- the `postgres-password` value in each `gp-api-federation-<env>` scope
+- the Unity Catalog connections `gp_api_dev` and `gp_api_prod` (type
+  `postgresql`, user `databricks_federation`, host = the env's cluster
+  endpoint, password from `secret('gp-api-federation-<env>', 'postgres-password')`)
+
+Order, per env, dev first:
+
+1. **omni deploy** creates the env's NLB and VPC endpoint service and the
+   `databricks_federation` role (`NOLOGIN`).
+2. **Password**: a DB admin sets the role's password and `LOGIN`.
+3. **Secret**: put that password in `gp-api-federation-<env>`, key
+   `postgres-password`.
+4. **Connection**: create `gp_api_<env>` in Unity Catalog.
+5. **One-line PR** here adding the env to `gp_api_federation_envs` in
+   `variables.tf`, with its endpoint service name.
+6. **Deploy** (Actions → Deploy, uncheck "Dry run"). The private endpoint rule
+   starts `PENDING`; an AWS admin accepts its VPC endpoint on the endpoint
+   service, and it turns `ESTABLISHED` within a few minutes.
+7. **Test** from a serverless SQL warehouse:
+   `SELECT count(*) FROM gp_api_pg_dev.public.campaign`.
+
+Removing an env from the map drops its catalog, grants and endpoint rule. The
+connection, scope and Postgres role stay.
+
 ---
 
 ## Astronomer (Astro) Airflow
@@ -265,6 +325,7 @@ Reusable workflows (`tf-plan.yaml`, `tf-apply.yaml`) are called by the above.
 ├── groups.tf                  # Databricks groups
 ├── locals.tf                  # Local values + Astro environment configs
 ├── gp_api_mirror.tf           # gp-api Postgres mirror (Lakeflow Connect)
+├── gp_api_federation.tf       # gp-api Postgres federation (foreign catalogs)
 ├── outputs.tf                 # Terraform outputs
 ├── permissions.tf             # Databricks grants
 ├── provider.tf                # Provider configuration

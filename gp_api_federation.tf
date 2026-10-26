@@ -56,8 +56,38 @@ resource "databricks_mws_permission_assignment" "gp_api_pg_readers" {
   permissions  = ["USER"]
 }
 
+# A workspace takes one NCC, and this is ours. Add future serverless private
+# endpoint rules here; binding another NCC would drop these rules.
+resource "databricks_mws_network_connectivity_config" "workspace" {
+  provider = databricks.account
+  name     = "goodparty-us-west-2"
+  region   = "us-west-2"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "databricks_mws_ncc_binding" "workspace" {
+  provider                       = databricks.account
+  network_connectivity_config_id = databricks_mws_network_connectivity_config.workspace.network_connectivity_config_id
+  workspace_id                   = var.workspace_id
+}
+
 # Everything below needs the env's endpoint service and connection, so an env
 # joins gp_api_federation_envs only once both exist.
+
+# Starts PENDING until an AWS admin accepts the VPC endpoint on the endpoint
+# service. The domain name must match the connection's host.
+resource "databricks_mws_ncc_private_endpoint_rule" "gp_api_federation" {
+  for_each                       = local.gp_api_federation_connected
+  provider                       = databricks.account
+  network_connectivity_config_id = databricks_mws_network_connectivity_config.workspace.network_connectivity_config_id
+  endpoint_service               = each.value.endpoint_service
+  domain_names                   = [each.value.host]
+
+  depends_on = [databricks_mws_ncc_binding.workspace]
+}
 
 # Creating a foreign catalog takes CREATE_FOREIGN_CATALOG on the connection;
 # USE_CONNECTION lets CI read it. Querying the catalog on serverless needs only
@@ -81,7 +111,10 @@ resource "databricks_catalog" "gp_api_pg" {
     database = "gpdb"
   }
 
-  depends_on = [databricks_grant.gp_api_federation_connection_github_action]
+  depends_on = [
+    databricks_grant.gp_api_federation_connection_github_action,
+    databricks_mws_ncc_private_endpoint_rule.gp_api_federation,
+  ]
 }
 
 resource "databricks_grants" "gp_api_pg" {

@@ -9,26 +9,11 @@ data "databricks_mws_network_connectivity_configs" "probe_us_west_2" {
   region   = "us-west-2"
 }
 
-data "databricks_mws_network_connectivity_config" "probe" {
-  for_each = toset(data.databricks_mws_network_connectivity_configs.probe_all.names)
-  provider = databricks.account
-  name     = each.value
-}
-
-output "ncc_probe_names_all" {
-  value = data.databricks_mws_network_connectivity_configs.probe_all.names
-}
-
-output "ncc_probe_names_us_west_2" {
-  value = data.databricks_mws_network_connectivity_configs.probe_us_west_2.names
-}
-
-output "ncc_probe_details" {
+output "ncc_probe" {
   value = {
-    for name, ncc in data.databricks_mws_network_connectivity_config.probe : name => {
-      id     = ncc.network_connectivity_config_id
-      region = ncc.region
-      egress = ncc.egress_config
-    }
+    all_count       = try(length(data.databricks_mws_network_connectivity_configs.probe_all.names), 0)
+    all_names       = jsonencode(data.databricks_mws_network_connectivity_configs.probe_all.names)
+    us_west_2_count = try(length(data.databricks_mws_network_connectivity_configs.probe_us_west_2.names), 0)
+    us_west_2_names = jsonencode(data.databricks_mws_network_connectivity_configs.probe_us_west_2.names)
   }
 }
