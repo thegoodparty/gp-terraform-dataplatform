@@ -100,6 +100,27 @@ variable "gp_api_mirror_notification_emails" {
 }
 
 # =============================================================================
+# gp-api Postgres federation (gp_api_federation.tf)
+# =============================================================================
+
+variable "gp_api_federation_envs" {
+  description = <<-EOT
+    Federation environments ("dev", "prod") mapped to the VPC endpoint service
+    name omni's Pulumi stack outputs as databricksEndpointServiceName. Only
+    these get the NCC private endpoint rule, the foreign catalog and its
+    grants. Add an env only after its endpoint service and Unity Catalog
+    connection exist.
+  EOT
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = alltrue([for env in keys(var.gp_api_federation_envs) : contains(["dev", "prod"], env)])
+    error_message = "Each key must be \"dev\" or \"prod\"."
+  }
+}
+
+# =============================================================================
 # AWS (IAM roles the Airflow DAGs assume, S3 lifecycle rules)
 # =============================================================================
 
