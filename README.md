@@ -152,8 +152,11 @@ databricks jobs update --json '{"job_id": <id>, "new_settings": {"continuous": {
 
 `gp_api_federation.tf` lets Databricks query gp-api's Aurora database (`gpdb`)
 live, through a Unity Catalog connection and a foreign catalog. Nothing is
-copied. The AWS and Postgres side (the NLB, the VPC endpoint service, the
-`databricks_federation` role) and its runbook live in omni.
+copied. The AWS and Postgres side (an internet-facing NLB in front of an RDS
+Proxy, allowlisted to Databricks' outbound IPs, and the `databricks_federation`
+role) and its runbook live in omni
+(`packages/gp-api/deploy/databricks/federation/`). Serverless compute reaches
+Aurora through that NLB, so nothing here configures the network.
 
 | Env  | Foreign catalog | Connection    | Secret scope             | Readers group           |
 | ---- | --------------- | ------------- | ------------------------ | ----------------------- |
@@ -165,14 +168,9 @@ are not nested into `data users`; add members in the console. The `gp_api`
 service principal reads both catalogs.
 
 Terraform always manages the secret scopes and the readers groups. For each env
-in `gp_api_federation_envs` (a map from env to omni's
-`databricksEndpointServiceName` stack output, empty by default) it also
-manages:
+in `gp_api_federation_envs` (a list of `dev` and `prod`, empty by default) it
+also manages:
 
-- the private endpoint rule on the workspace's network connectivity
-  configuration (NCC), for that endpoint service, with the env's Aurora cluster
-  endpoint as its domain name. Serverless SQL warehouses run federated queries
-  and can't use the VPC peering classic compute uses, so they need this rule.
 - the foreign catalog over database `gpdb`, using connection `gp_api_<env>`
 - `USE_CATALOG`, `USE_SCHEMA` and `SELECT` on the catalog for the readers
   group and `gp_api`
@@ -186,27 +184,29 @@ in Postgres:
 - the `databricks_federation` Postgres role's password (and `LOGIN`)
 - the `postgres-password` value in each `gp-api-federation-<env>` scope
 - the Unity Catalog connections `gp_api_dev` and `gp_api_prod` (type
-  `postgresql`, user `databricks_federation`, host = the env's cluster
-  endpoint, password from `secret('gp-api-federation-<env>', 'postgres-password')`)
+  `postgresql`, host = the NLB's DNS name from omni's stack output
+  `databricksFederationHost`, user `databricks_federation`, password from
+  `secret('gp-api-federation-<env>', 'postgres-password')`)
 
 Order, per env, dev first:
 
-1. **omni deploy** creates the env's NLB and VPC endpoint service and the
-   `databricks_federation` role (`NOLOGIN`).
+1. **omni deploy** creates the env's NLB and RDS Proxy and the
+   `databricks_federation` role (`NOLOGIN`). The NLB's DNS name is the stack
+   output `databricksFederationHost`.
 2. **Password**: a DB admin sets the role's password and `LOGIN`.
 3. **Secret**: put that password in `gp-api-federation-<env>`, key
    `postgres-password`.
-4. **Connection**: create `gp_api_<env>` in Unity Catalog.
+4. **Connection**: a Databricks admin runs omni's `create-connection.sh <env>`,
+   which creates `gp_api_<env>` with that host and makes `github-action` its
+   owner.
 5. **One-line PR** here adding the env to `gp_api_federation_envs` in
-   `variables.tf`, with its endpoint service name.
-6. **Deploy** (Actions → Deploy, uncheck "Dry run"). The private endpoint rule
-   starts `PENDING`; an AWS admin accepts its VPC endpoint on the endpoint
-   service, and it turns `ESTABLISHED` within a few minutes.
+   `variables.tf`.
+6. **Deploy** (Actions → Deploy, uncheck "Dry run").
 7. **Test** from a serverless SQL warehouse:
    `SELECT count(*) FROM gp_api_pg_dev.public.campaign`.
 
-Removing an env from the map drops its catalog, grants and endpoint rule. The
-connection, scope and Postgres role stay.
+Removing an env from the list drops its catalog and grants. The connection,
+scope and Postgres role stay.
 
 ---
 
