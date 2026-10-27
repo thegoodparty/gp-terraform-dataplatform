@@ -100,6 +100,26 @@ variable "gp_api_mirror_notification_emails" {
 }
 
 # =============================================================================
+# gp-api Postgres federation (gp_api_federation.tf)
+# =============================================================================
+
+variable "gp_api_federation_envs" {
+  description = <<-EOT
+    Federation environments ("dev", "prod") whose foreign catalog and grants
+    Terraform manages. Each env's Unity Catalog connection gp_api_<env> must
+    exist, owned by github-action, before Deploy. Remove an env to drop its
+    catalog.
+  EOT
+  type        = list(string)
+  default     = ["dev", "prod"]
+
+  validation {
+    condition     = alltrue([for env in var.gp_api_federation_envs : contains(["dev", "prod"], env)])
+    error_message = "Each env must be \"dev\" or \"prod\"."
+  }
+}
+
+# =============================================================================
 # AWS (IAM roles the Airflow DAGs assume, S3 lifecycle rules)
 # =============================================================================
 

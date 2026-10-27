@@ -148,6 +148,67 @@ databricks jobs list --name gp-api-mirror-dev-ingestion-loop
 databricks jobs update --json '{"job_id": <id>, "new_settings": {"continuous": {"pause_status": "PAUSED"}}}'
 ```
 
+### gp-api Postgres federation (Lakehouse Federation)
+
+`gp_api_federation.tf` lets Databricks query gp-api's Aurora database (`gpdb`)
+live, through a Unity Catalog connection and a foreign catalog. Nothing is
+copied. The AWS and Postgres side (an internet-facing NLB in front of an RDS
+Proxy, allowlisted to Databricks' outbound IPs, and the `databricks_federation`
+role) and its runbook live in omni
+(`packages/gp-api/deploy/databricks/federation/`). Serverless compute reaches
+Aurora through that NLB, so nothing here configures the network.
+
+| Env  | Foreign catalog | Connection    | Secret scope             | Readers group           |
+| ---- | --------------- | ------------- | ------------------------ | ----------------------- |
+| dev  | `gp_api_pg_dev` | `gp_api_dev`  | `gp-api-federation-dev`  | `gp_api_pg_dev_readers` |
+| prod | `gp_api_pg`     | `gp_api_prod` | `gp-api-federation-prod` | `gp_api_pg_readers`     |
+
+The catalogs expose users' personal data. The readers groups start empty and
+are not nested into `data users`; add members in the console. The `gp_api`
+service principal reads both catalogs.
+
+Terraform always manages the secret scopes and the readers groups. For each env
+in `gp_api_federation_envs` (`dev` and `prod` by default) it also manages:
+
+- the foreign catalog over database `gpdb`, using connection `gp_api_<env>`
+- `USE_CATALOG`, `USE_SCHEMA` and `SELECT` on the catalog for the readers
+  group and `gp_api`
+- `USE_CONNECTION` and `CREATE_FOREIGN_CATALOG` on the connection for
+  `github-action`, which creates the catalog. Readers need no connection grant
+  to query on serverless or standard compute.
+
+Stays outside Terraform, because each would put a credential in state or lives
+in Postgres:
+
+- the `databricks_federation` Postgres role's password (and `LOGIN`)
+- the `postgres-password` value in each `gp-api-federation-<env>` scope, if
+  the connection reads its password from there
+- the Unity Catalog connections `gp_api_dev` and `gp_api_prod` (type
+  `postgresql`, host = the NLB's DNS name from omni's stack output
+  `databricksFederationHost`, port 5432, user `databricks_federation`,
+  `sslmode` `verify-ca`, the Amazon root CAs), owned by `github-action`
+
+Order. Steps 1 to 4 for both envs, then one Deploy:
+
+1. **omni deploy** creates the env's NLB and RDS Proxy and the
+   `databricks_federation` role (`NOLOGIN`). The NLB's DNS name is the stack
+   output `databricksFederationHost`.
+2. **Password**: a DB admin sets the role's password and `LOGIN`, and the
+   same credentials go into omni's RDS Proxy secret (omni runbook).
+3. **Secret** (optional): put that password in `gp-api-federation-<env>`, key
+   `postgres-password`, only if the connection reads it from there.
+4. **Connection**: a Databricks admin creates `gp_api_<env>` in Catalog
+   Explorer with the settings above, skips the wizard's catalog step, and sets
+   the owner to `github-action`.
+5. **Merge** this change, once both connections exist. A Deploy before then
+   fails at the catalog step.
+6. **Deploy** (Actions → Deploy, uncheck "Dry run").
+7. **Test** from a serverless SQL warehouse:
+   `SELECT count(*) FROM gp_api_pg_dev.public.campaign`.
+
+Removing an env from the list drops its catalog and grants. The connection,
+scope and Postgres role stay.
+
 ---
 
 ## Astronomer (Astro) Airflow
@@ -265,6 +326,7 @@ Reusable workflows (`tf-plan.yaml`, `tf-apply.yaml`) are called by the above.
 ├── groups.tf                  # Databricks groups
 ├── locals.tf                  # Local values + Astro environment configs
 ├── gp_api_mirror.tf           # gp-api Postgres mirror (Lakeflow Connect)
+├── gp_api_federation.tf       # gp-api Postgres federation (foreign catalogs)
 ├── outputs.tf                 # Terraform outputs
 ├── permissions.tf             # Databricks grants
 ├── provider.tf                # Provider configuration
