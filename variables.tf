@@ -105,12 +105,13 @@ variable "gp_api_mirror_notification_emails" {
 
 variable "gp_api_federation_envs" {
   description = <<-EOT
-    Federation environments ("dev", "prod") whose Unity Catalog connection
-    gp_api_<env> already exists. Only these get the foreign catalog and its
-    grants. Add an env only after omni's deploy and its connection exist.
+    Federation environments ("dev", "prod") whose foreign catalog and grants
+    Terraform manages. Each env's Unity Catalog connection gp_api_<env> must
+    exist, owned by github-action, before Deploy. Remove an env to drop its
+    catalog.
   EOT
   type        = list(string)
-  default     = []
+  default     = ["dev", "prod"]
 
   validation {
     condition     = alltrue([for env in var.gp_api_federation_envs : contains(["dev", "prod"], env)])

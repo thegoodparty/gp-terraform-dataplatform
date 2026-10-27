@@ -54,8 +54,8 @@ resource "databricks_mws_permission_assignment" "gp_api_pg_readers" {
   permissions  = ["USER"]
 }
 
-# Everything below needs the env's connection, so an env joins
-# gp_api_federation_envs only once it exists.
+# Everything below needs the env's connection, so both connections exist
+# before Deploy.
 
 # Creating a foreign catalog takes CREATE_FOREIGN_CATALOG on the connection;
 # USE_CONNECTION lets CI read it. Querying the catalog on serverless needs only
