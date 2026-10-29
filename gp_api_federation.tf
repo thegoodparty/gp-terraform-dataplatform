@@ -99,4 +99,10 @@ resource "databricks_grants" "gp_api_pg" {
     principal  = databricks_service_principal.gp_api.application_id
     privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
   }
+
+  # dbt views in mart_gp_api read gp-api tables live through the catalog.
+  grant {
+    principal  = data.databricks_service_principal.dbt_cloud.application_id
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+  }
 }
