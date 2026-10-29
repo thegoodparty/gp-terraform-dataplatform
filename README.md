@@ -165,14 +165,14 @@ Aurora through that NLB, so nothing here configures the network.
 
 The catalogs expose users' personal data. The readers groups start empty and
 are not nested into `data users`; add members in the console. The `gp_api`
-service principal reads both catalogs.
+and `dbt_cloud` service principals read both catalogs.
 
 Terraform always manages the secret scopes and the readers groups. For each env
 in `gp_api_federation_envs` (`dev` and `prod` by default) it also manages:
 
 - the foreign catalog over database `gpdb`, using connection `gp_api_<env>`
 - `USE_CATALOG`, `USE_SCHEMA` and `SELECT` on the catalog for the readers
-  group and `gp_api`
+  group, `gp_api` and `dbt_cloud`
 - `USE_CONNECTION` and `CREATE_FOREIGN_CATALOG` on the connection for
   `github-action`, which creates the catalog. Readers need no connection grant
   to query on serverless or standard compute.
