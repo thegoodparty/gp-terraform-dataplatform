@@ -224,3 +224,14 @@ resource "databricks_group_member" "gp_api_in_mart_readers" {
   group_id  = databricks_group.mart_readers_account[local.gp_api.mart].id
   member_id = databricks_service_principal.gp_api.id
 }
+
+# The case scout SP reads only the case_scout mart, via that mart's reader group,
+# and is the group's only member.
+# Inherits: USE_CATALOG (via catalog_main),
+#           USE_SCHEMA + SELECT (via mart_schemas)
+# SQL warehouse CAN_USE on wh-case-scout is granted in permissions.tf.
+resource "databricks_group_member" "case_scout_in_mart_readers" {
+  provider  = databricks.account
+  group_id  = databricks_group.mart_readers_account[local.case_scout.mart].id
+  member_id = databricks_service_principal.case_scout.id
+}

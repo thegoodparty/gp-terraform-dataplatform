@@ -114,6 +114,23 @@ output "gp_api_warehouse" {
   }
 }
 
+# =============================================================================
+# Case Scout Outputs
+# =============================================================================
+
+output "case_scout_service_principal" {
+  description = "Application (client) ID of the case scout service principal; the OAuth M2M client_id for the scout's Databricks connection"
+  value       = databricks_service_principal.case_scout.application_id
+}
+
+output "case_scout_warehouse" {
+  description = "Name and ID of the case scout SQL warehouse; the ID is the scout's HTTP path"
+  value = {
+    name = databricks_sql_endpoint.case_scout.name
+    id   = databricks_sql_endpoint.case_scout.id
+  }
+}
+
 output "gold_match_bedrock_role_arns" {
   description = "Per-environment role the gold-match pod assumes for Bedrock (the gold_match_aws_role_arn Airflow Variable on that deployment)."
   value       = { for env, role in aws_iam_role.gold_match_bedrock : env => role.arn }

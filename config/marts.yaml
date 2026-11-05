@@ -19,3 +19,6 @@ marts:
 
   - name: finance
     description: "Financial data modeled from the raw ingests in airbyte_source_finance. Read access is scoped to the mart_finance_readers group (business and finance ops, assigned in the console), not all data users (excluded from shared_marts)."
+
+  - name: case_scout
+    description: "Production chat messages read live from gp-api Postgres, for the case scout that turns failed chats into eval cases. Holds chat transcripts, so read access is scoped to the mart_case_scout_readers group, whose only member is sp_case_scout, not all data users (excluded from shared_marts)."

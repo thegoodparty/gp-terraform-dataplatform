@@ -216,11 +216,12 @@ resource "databricks_grants" "mart_schemas" {
     ]
   }
 
-  # Skipped for the finance mart: its audience is business and finance ops, and
+  # Skipped for the finance mart, whose audience is business and finance ops, and
+  # the case_scout mart, whose production chat transcripts only the scout reads.
   # dbt_developers holds no catalog-level SELECT, so withholding the schema grant
   # is what actually keeps the group out.
   dynamic "grant" {
-    for_each = each.key == local.finance_mart ? [] : [1]
+    for_each = contains([local.finance_mart, local.case_scout.mart], each.key) ? [] : [1]
     content {
       principal = databricks_group.dbt_developers_account.display_name
       privileges = [
@@ -462,6 +463,18 @@ resource "databricks_permissions" "sql_warehouse_gp_api" {
   }
 
   depends_on = [databricks_mws_permission_assignment.gp_api]
+}
+
+# CAN_USE on the case scout warehouse (databricks_sql_endpoint.case_scout).
+resource "databricks_permissions" "sql_warehouse_case_scout" {
+  sql_endpoint_id = databricks_sql_endpoint.case_scout.id
+
+  access_control {
+    service_principal_name = databricks_service_principal.case_scout.application_id
+    permission_level       = "CAN_USE"
+  }
+
+  depends_on = [databricks_mws_permission_assignment.case_scout]
 }
 
 # =============================================================================
