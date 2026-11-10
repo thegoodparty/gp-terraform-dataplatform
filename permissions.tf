@@ -115,9 +115,35 @@ resource "databricks_grants" "catalog_main" {
     }
   }
 
+  # Governance roles. Nested roles inherit these, so each grant is what that
+  # role adds on top of the roles it contains.
+  grant {
+    principal  = databricks_group.role_analyst.display_name
+    privileges = ["USE_CATALOG", "SELECT", "CREATE_SCHEMA"]
+  }
+
+  grant {
+    principal  = databricks_group.role_ingestor.display_name
+    privileges = ["CREATE_SCHEMA", "CREATE_TABLE", "CREATE_VOLUME", "MODIFY"]
+  }
+
+  grant {
+    principal  = databricks_group.role_transformer.display_name
+    privileges = ["CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
+  }
+
+  grant {
+    principal  = databricks_group.role_admin.display_name
+    privileges = ["MANAGE"]
+  }
+
   depends_on = [
     databricks_group.mart_readers_account,
-    databricks_group.dbt_developers_account
+    databricks_group.dbt_developers_account,
+    databricks_group.role_analyst,
+    databricks_group.role_ingestor,
+    databricks_group.role_transformer,
+    databricks_group.role_admin
   ]
 }
 
