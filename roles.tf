@@ -50,29 +50,31 @@ resource "databricks_group" "role_admin" {
   }
 }
 
-# pii_viewer is analyst plus raw access; transformer is pii_viewer plus write.
-resource "databricks_group_member" "analyst_in_pii_viewer" {
+# A member inherits the privileges of the group it is added to, so the higher
+# role is the member. pii_viewer is analyst plus raw access; transformer is
+# pii_viewer plus write.
+resource "databricks_group_member" "pii_viewer_in_analyst" {
   provider  = databricks.account
-  group_id  = databricks_group.role_pii_viewer.id
-  member_id = databricks_group.role_analyst.id
-}
-
-resource "databricks_group_member" "pii_viewer_in_transformer" {
-  provider  = databricks.account
-  group_id  = databricks_group.role_transformer.id
+  group_id  = databricks_group.role_analyst.id
   member_id = databricks_group.role_pii_viewer.id
 }
 
-resource "databricks_group_member" "analyst_in_ingestor" {
+resource "databricks_group_member" "transformer_in_pii_viewer" {
   provider  = databricks.account
-  group_id  = databricks_group.role_ingestor.id
-  member_id = databricks_group.role_analyst.id
+  group_id  = databricks_group.role_pii_viewer.id
+  member_id = databricks_group.role_transformer.id
 }
 
-resource "databricks_group_member" "analyst_in_admin" {
+resource "databricks_group_member" "ingestor_in_analyst" {
   provider  = databricks.account
-  group_id  = databricks_group.role_admin.id
-  member_id = databricks_group.role_analyst.id
+  group_id  = databricks_group.role_analyst.id
+  member_id = databricks_group.role_ingestor.id
+}
+
+resource "databricks_group_member" "admin_in_analyst" {
+  provider  = databricks.account
+  group_id  = databricks_group.role_analyst.id
+  member_id = databricks_group.role_admin.id
 }
 
 # Role groups are assigned to the workspace so they can be assumed there.
