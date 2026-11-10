@@ -115,8 +115,7 @@ resource "databricks_grants" "catalog_main" {
     }
   }
 
-  # Governance roles. Nested roles inherit these, so each grant is what that
-  # role adds on top of the roles it contains.
+  # Governance roles. Each grant is what that role adds on top of inherited ones.
   grant {
     principal  = databricks_group.role_analyst.display_name
     privileges = ["USE_CATALOG", "SELECT", "CREATE_SCHEMA"]
