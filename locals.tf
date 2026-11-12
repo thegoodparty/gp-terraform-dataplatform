@@ -27,6 +27,15 @@ locals {
     warehouse_name = "wh-gp-api"
   }
 
+  # The nightly case scout, which turns failed production chats into eval
+  # cases. Not an agent_products entry: its mart is restricted, and its
+  # warehouse is tagged as eval spend rather than a product agent's.
+  case_scout = {
+    mart           = "case_scout"
+    sp_name        = "sp_case_scout"
+    warehouse_name = "wh-case-scout"
+  }
+
   # The restricted mart for financial data, read by business and finance ops.
   # Its raw landing schema, airbyte_source_finance, is not declared here:
   # Airbyte creates it and so owns it, as with the general airbyte_source.
@@ -41,10 +50,13 @@ locals {
   # gp_api: passes the full L2 record through, PII included. Only the gp-api
   # service principal is in its group.
   # finance: financial data, scoped to business and finance ops.
+  # case_scout: production chat transcripts, read live from gp-api Postgres.
+  # Only the case scout service principal is in its group.
   restricted_marts = [
     "sales_reverse_etl",
     local.gp_api.mart,
     local.finance_mart,
+    local.case_scout.mart,
   ]
 
   # Marts that all data users should be able to read.

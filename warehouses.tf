@@ -97,3 +97,29 @@ resource "databricks_sql_endpoint" "gp_api" {
     prevent_destroy = true
   }
 }
+
+# Dedicated Small serverless warehouse for the case scout, so the compute behind
+# its nightly read of production chats shows as eval spend on its own line.
+resource "databricks_sql_endpoint" "case_scout" {
+  name                      = local.case_scout.warehouse_name
+  cluster_size              = "Small"
+  enable_serverless_compute = true
+  warehouse_type            = "PRO" # required for serverless warehouses; there is no SERVERLESS type
+  auto_stop_mins            = 5
+  max_num_clusters          = 1
+
+  tags {
+    custom_tags {
+      key   = "product"
+      value = "case_scout"
+    }
+    custom_tags {
+      key   = "purpose"
+      value = "evals"
+    }
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}

@@ -160,6 +160,25 @@ resource "databricks_mws_permission_assignment" "gp_api" {
   permissions  = ["USER"]
 }
 
+# The case scout's read-only principal. OAuth M2M credentials generated
+# manually; see README. It must never get a gp_api_pg catalog grant, which
+# reaches every gp-api table: it reads Postgres only through its mart's view.
+resource "databricks_service_principal" "case_scout" {
+  provider     = databricks.account
+  display_name = local.case_scout.sp_name
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "databricks_mws_permission_assignment" "case_scout" {
+  provider     = databricks.account
+  workspace_id = var.workspace_id
+  principal_id = databricks_service_principal.case_scout.id
+  permissions  = ["USER"]
+}
+
 # GitHub OIDC federation for this repo's CI, which runs as the github-action SP
 # (data source in groups.tf). One subject per caller: PR plans, Deploy's plan on
 # main, and the apply job, which runs in the `production` environment.
