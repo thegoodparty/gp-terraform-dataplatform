@@ -8,7 +8,12 @@ Terraform configuration for managing the Good Party data infrastructure:
 
 ### Prerequisites
 
-- Terraform ~> 1.14.4 (`brew install hashicorp/tap/terraform`)
+- asdf (`brew install asdf`)
+- Terraform ~> 1.14.4, managed by asdf via `.tool-versions`:
+  ```bash
+  asdf plugin add terraform
+  asdf install
+  ```
 - Astro CLI (`brew install astronomer/tap/astro`)
 - Databricks CLI with `DEFAULT` and `ACCOUNT` profiles configured
 
