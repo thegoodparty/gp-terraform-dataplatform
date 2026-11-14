@@ -292,7 +292,7 @@ is pinned to this repo: pull requests, `main`, and the `production` environment.
 | `AWS_ROLE_ARN` | IAM role ARN for OIDC authentication |
 | `AWS_REGION` | AWS region (e.g., `us-west-2`) |
 | `ASTRO_ORGANIZATION_ID` | Astronomer organization ID |
-| `ASTRO_CONTACT_EMAILS` | Comma-separated alert emails |
+| `ASTRO_CONTACT_EMAILS` | Alert emails as a JSON array, e.g. `["data-alerts@goodparty.org"]` |
 | `DATABRICKS_ACCOUNT_ID` | Databricks account ID |
 | `DATABRICKS_WORKSPACE_ID` | Databricks workspace ID |
 | `DATABRICKS_WORKSPACE_HOST` | Databricks workspace URL |
