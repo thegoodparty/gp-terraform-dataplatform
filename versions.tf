@@ -22,5 +22,14 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    # For one resource: a short sleep between writing an IAM role policy and
+    # creating the external location that exercises it. IAM changes are
+    # eventually consistent, so without it the first apply can fail intermittently
+    # on a call made seconds after the policy write. Only `bifrost_usage_storage.tf`
+    # uses it.
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.13"
+    }
   }
 }
