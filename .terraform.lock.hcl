@@ -6,6 +6,7 @@ provider "registry.terraform.io/astronomer/astro" {
   constraints = "~> 1.0"
   hashes = [
     "h1:dIDePq5WKo/qX2WXjmQhYs7vcfypYOd8jRf/Mqdjz8c=",
+    "h1:upL50SWyiDv2OrN4ufz6uw0yyt38Y2CZsc3Sd/q7lrY=",
     "zh:1dff272410f56b2d5d6f36562ca465d83ec1897c491ffa8113e616ffd6a10f01",
     "zh:21830b7e6f2d0fc5ef57461e14474191e1b942c901ed31a9c72daacae9d0ba99",
     "zh:33ef67eeabdb3677b3e2b7c89e26b469f7404e33f5230f437990ee91757e6e65",
@@ -29,6 +30,7 @@ provider "registry.terraform.io/databricks/databricks" {
   constraints = "~> 1.50"
   hashes = [
     "h1:46RauhPzx3/tTNAm240NHYSzOOoLcwQkv3YWumGT70I=",
+    "h1:LR2cwOBh8WuAOmo4SNTHl4nVwIat0KW1VTOps8/Bncg=",
     "zh:1017be8c3f40ab895e54e4e20aff28b38ff0bb14e31f303a26b7e36f50693f68",
     "zh:34cec3190716a53d67b794824ebff5da5d6928c2cea5442b7848c35a636ffa83",
     "zh:60efb88f8789afff28fc0dbe59c8ea09871a99cd0e748bb3dc543d6c71ca150d",
@@ -43,6 +45,7 @@ provider "registry.terraform.io/hashicorp/aws" {
   constraints = "~> 5.0"
   hashes = [
     "h1:Ijt7pOlB7Tr7maGQIqtsLFbl7pSMIj06TVdkoSBcYOw=",
+    "h1:wOhTPz6apLBuF7/FYZuCoXRK/MLgrNprZ3vXmq83g5k=",
     "zh:054b8dd49f0549c9a7cc27d159e45327b7b65cf404da5e5a20da154b90b8a644",
     "zh:0b97bf8d5e03d15d83cc40b0530a1f84b459354939ba6f135a0086c20ebbe6b2",
     "zh:1589a2266af699cbd5d80737a0fe02e54ec9cf2ca54e7e00ac51c7359056f274",
