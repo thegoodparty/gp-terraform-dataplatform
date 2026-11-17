@@ -118,3 +118,17 @@ output "gold_match_bedrock_role_arns" {
   description = "Per-environment role the gold-match pod assumes for Bedrock (the gold_match_aws_role_arn Airflow Variable on that deployment)."
   value       = { for env, role in aws_iam_role.gold_match_bedrock : env => role.arn }
 }
+
+# =============================================================================
+# Bifrost usage export (bifrost_usage_storage.tf)
+# =============================================================================
+
+output "bifrost_usage_reader_role_arn" {
+  description = "IAM role Unity Catalog assumes to read the Bifrost usage export. The bucket policy in thegoodparty/ops admits exactly this ARN."
+  value       = aws_iam_role.bifrost_usage.arn
+}
+
+output "bifrost_usage_external_location_url" {
+  description = "The export prefix as Unity Catalog sees it; pairs with the loader's bifrost_export_bucket and bifrost_export_prefix Airflow Variables."
+  value       = databricks_external_location.bifrost_usage.url
+}
