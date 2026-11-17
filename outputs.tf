@@ -132,3 +132,17 @@ output "governance_schema" {
   description = "Fully qualified schema holding the masking functions and the pseudonym salt."
   value       = databricks_schema.governance.id
 }
+
+# =============================================================================
+# Bifrost usage export (bifrost_usage_storage.tf)
+# =============================================================================
+
+output "bifrost_usage_reader_role_arn" {
+  description = "IAM role Unity Catalog assumes to read the Bifrost usage export. The bucket policy in thegoodparty/ops admits exactly this ARN."
+  value       = aws_iam_role.bifrost_usage.arn
+}
+
+output "bifrost_usage_external_location_url" {
+  description = "The export prefix as Unity Catalog sees it; pairs with the loader's bifrost_export_bucket and bifrost_export_prefix Airflow Variables."
+  value       = databricks_external_location.bifrost_usage.url
+}
