@@ -55,15 +55,21 @@ resource "databricks_sql_table" "pseudonym_salt" {
   }
 }
 
-# Authoritative, and safe here: the schema and everything in it is created by
-# this stack or by dbt_cloud, and nothing else holds a grant on it.
+# Authoritative, and safe here: this schema is created by this stack, and the
+# only other writer is dbt_cloud's own builds.
 #
 # CREATE_FUNCTION is deliberately not on dbt_cloud's catalog grant, so the build
 # principal needs it at the schema. Analyst gets EXECUTE so a person or agent
 # working as analyst can run governance.pseudonym(...) to look a row up; the
-# higher roles inherit it through nesting. The salt table gets no grant of its
-# own: the functions' owner, dbt_cloud, reads it through its catalog-wide
-# SELECT, and a caller needs only EXECUTE.
+# higher roles inherit it through nesting.
+#
+# The salt table gets no grant of its own, and a caller needs only EXECUTE. That
+# is not the same as the salt being unreadable: catalog-level grants reach every
+# schema in this catalog, so analyst (USE_SCHEMA + SELECT), data-engineers,
+# dbt_cloud, github-action and the airflow principals can all read it, and the
+# catalog-level MODIFY that ingestor and transformer hold reaches it too. The
+# Notes' position is that the salt is not a secret from staff; a catalog the
+# role grants do not reach is the change that would make it one.
 resource "databricks_grants" "governance" {
   schema = databricks_schema.governance.id
 

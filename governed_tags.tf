@@ -41,6 +41,12 @@ resource "databricks_tag_policy" "governed" {
 # re-setting a value that is already there, and dbt re-sets its tags on every
 # build, so the build principal must hold it from the moment the tag exists.
 # Only tag rule sets are managed here: group rule sets stay out of Terraform.
+#
+# No prevent_destroy: the name interpolates the tag policy id, which the provider
+# treats as unknown on any tag update, so editing a tag forces this resource to
+# be replaced. Blocking the destroy would fail the apply instead of re-creating
+# the rule set, and a rule set with no ASSIGN stops every dbt build. Losing the
+# rule set is recoverable on the next apply; losing the apply is not.
 resource "databricks_access_control_rule_set" "governed" {
   for_each = local.governed_tags
   provider = databricks.account
@@ -55,9 +61,5 @@ resource "databricks_access_control_rule_set" "governed" {
   grant_rules {
     principals = [data.databricks_service_principal.dbt_cloud.acl_principal_id]
     role       = "roles/tagPolicy.assigner"
-  }
-
-  lifecycle {
-    prevent_destroy = true
   }
 }
