@@ -120,6 +120,20 @@ output "gold_match_bedrock_role_arns" {
 }
 
 # =============================================================================
+# Governance Outputs
+# =============================================================================
+
+output "governed_tag_policy_ids" {
+  description = "Tag policy id per governed tag key. The ASSIGN rule set hangs off these, so this is the handle for auditing who may write a tag."
+  value       = { for key, policy in databricks_tag_policy.governed : key => policy.id }
+}
+
+output "governance_schema" {
+  description = "Fully qualified schema holding the masking functions and the pseudonym salt."
+  value       = databricks_schema.governance.id
+}
+
+# =============================================================================
 # Bifrost usage export (bifrost_usage_storage.tf)
 # =============================================================================
 
