@@ -285,9 +285,11 @@ Two rules about that table:
 - **Never tag it `classified`.** It must stay closed to every masked principal;
   only the function reads it, as its own owner.
 
-To rotate, insert the next version with the same statement and a `2`, then point
-`pseudonym` at it. Rotation invalidates every previous hash at once, which is
-the point, and also breaks any saved lookup or stored join key built on one.
+To rotate, change the `1` to the next version in both the `select` and the
+`not exists` test, run it, then point `pseudonym` at the new version: insert the
+row first, then rebuild the function, never the other way round. Rotation
+invalidates every previous hash at once, which is the point, and also breaks any
+saved lookup or stored join key built on one.
 
 ---
 
