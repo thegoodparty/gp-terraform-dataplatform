@@ -118,7 +118,7 @@ resource "databricks_grants" "catalog_main" {
   # Governance roles. Each grant is what that role adds on top of inherited ones.
   grant {
     principal  = databricks_group.role_analyst.display_name
-    privileges = ["USE_CATALOG", "SELECT", "CREATE_SCHEMA"]
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
   }
 
   grant {
