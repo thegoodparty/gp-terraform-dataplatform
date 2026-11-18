@@ -665,9 +665,9 @@ resource "databricks_grant" "airbyte_source_finance_dbt_cloud" {
 # missing row rather than a missing block.
 locals {
   # raw holds the unmasked values, so every entry is an exception with a reason.
-  # analyst is deliberately absent: it reads prod, where raw's tags and policies
-  # travel with the data through every view. Airflow and matcha reach raw by
-  # assuming ingestor once roles replace their standing grants.
+  # analyst is deliberately absent: it reads prod, and no policy attaches to raw
+  # yet, so a prod view over raw would carry no mask either. Airflow and matcha
+  # reach raw by assuming ingestor once roles replace their standing grants.
   raw_catalog_grants = {
     "dbt_cloud" = {
       principal  = data.databricks_service_principal.dbt_cloud.application_id
@@ -714,11 +714,12 @@ locals {
       principal  = data.databricks_service_principal.dbt_cloud.application_id
       privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
     }
-    # CI builds under this principal, so it creates the ci_<pr> schema itself
-    # rather than assuming transformer, which is a person's role.
+    # Read-only, and not a dbt builder: the ci_<pr> schemas are owned by
+    # dbt_cloud, which runs the build. This principal reads a dev relation for
+    # the checks CI runs against one, and nothing more.
     "github_action" = {
       principal  = data.databricks_service_principal.github_action.application_id
-      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
     }
     "dbt_developers" = {
       principal  = databricks_group.dbt_developers_account.display_name

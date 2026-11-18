@@ -183,10 +183,19 @@ run "dev_holds_personal_and_ci_work" {
     error_message = "analyst must be able to use the personal schema it creates, or its first build fails."
   }
 
-  # CI creates the ci_<pr> schema under the principal it actually runs as.
+  # The ci_<pr> schemas are built and owned by dbt_cloud, which is the dbt
+  # builder. github-action is read-only here, so granting it write would widen
+  # what PR-triggered code can do for no reason.
   assert {
-    condition     = contains(local.dev_catalog_grants["github_action"].privileges, "CREATE_SCHEMA")
-    error_message = "CI runs as github-action and has to create its own ci_<pr> schema."
+    condition = contains(local.dev_catalog_grants["dbt_cloud"].privileges, "CREATE_SCHEMA") && contains(
+      local.dev_catalog_grants["dbt_cloud"].privileges, "CREATE_TABLE"
+    )
+    error_message = "dbt_cloud builds and owns the ci_<pr> schemas on dev."
+  }
+
+  assert {
+    condition     = !contains(local.dev_catalog_grants["github_action"].privileges, "CREATE_TABLE")
+    error_message = "github-action builds no dbt relation; it must not be able to write on dev."
   }
 
   assert {
