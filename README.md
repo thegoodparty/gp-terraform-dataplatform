@@ -303,8 +303,47 @@ Two rules about that table:
   to debug. Agents here run on a person's login, which can read it, and the
   models behind them are third-party. Every verification reads a count or a
   length instead.
-- **Never tag it `classified`.** It must stay closed to every masked principal;
-  only the function reads it, as its own owner.
+- **Its `classified` tag is the open question below, not a settled rule.** An
+  earlier version of this section said "never tag it `classified`" on the grounds
+  that it "must stay closed to every masked principal". That reason is already
+  untrue: analyst holds catalog-wide `SELECT` and `USE_SCHEMA`, so analyst can
+  read this table directly today whatever its tags say. Treat the tag as a
+  decision waiting on the masking verification, described next.
+
+**The salt table versus the unclassified row filter. Read this before trusting a
+masked read.**
+
+`pseudonym` reads `governance.pseudonym_salt` in a subquery. Unity Catalog checks
+access to a table read inside a function against the function's owner, but
+evaluates policies against the **querying user**. `closed_until_classified`
+applies to every table in the catalog that does not carry `classified = true`,
+and the salt table carries no tags. So for an `analyst` session the subquery is
+filtered to no rows and `pseudonym` returns null for every input, silently: no
+error, and every join on a hashed email stops matching.
+
+Note which way the filter runs. The row filter is
+`not has_tag_value('classified', 'true')`, so `classified = true` is what
+**exempts** a table. Leaving the salt untagged is what breaks the mask; tagging
+it is what fixes it. That is the opposite of what intuition suggests, and it is
+the reason the old "never tag it" rule was worth re-reading rather than copying.
+
+Two ways out, and the choice is deliberate:
+
+1. **Tag `pseudonym_salt` `classified = true`.** One tag assignment on one
+   Terraform-owned table. The subquery then reads, and the identifier mask works.
+   The cost is nil beyond what already exists: the policies apply only to
+   `analyst`, and `analyst` already reaches this table through catalog `SELECT`.
+2. **Exempt it by a dedicated tag rather than by `classified`,** for example a
+   table-level `open = true` with the row filter widened to
+   `not has_tag_value('classified', 'true') and not has_tag_value('open', 'true')`.
+   More moving parts, and `open` does not propagate, so the exemption stays local
+   to the object it is set on.
+
+Neither is applied here. This PR adds the policies and leaves the salt untagged,
+because the tag is a classification decision rather than a consequence of the
+policy shape, and because nobody is in `analyst` to be affected. The masking
+verification measures `length(governance.pseudonym(...))` first, before any other
+check, and it is what forces this decision.
 
 To rotate, change the `1` to the next version in both the `select` and the
 `not exists` test, run it, then point `pseudonym` at the new version: insert the
@@ -353,13 +392,11 @@ neither can a developer's own identity. Lookups go through the roles by design:
 a person runs as `analyst` and calls `governance.pseudonym('someone@example.org')`
 from there.
 
-**One hazard to know before trusting a masked read.** `pseudonym` reads the salt
-table in a subquery. Unity Catalog checks access to a table read inside a
-function against the function's owner, but evaluates policies against the
-querying user, so a row filter on the salt table would empty that subquery and
-return null for every identifier, silently. The salt table must never be tagged
-`classified` for this reason, and the masking verification measures a masked
-identifier's length before it trusts anything else.
+**One hazard to know before trusting a masked read.** See "The salt table versus
+the unclassified row filter" above: the salt table is unfiltered today, which is
+exactly what would make `pseudonym` return null inside an analyst session. The
+masking verification measures a masked identifier's length before it trusts
+anything else.
 
 **dbt replaces the functions on every prod build.** `models/governance/` builds
 with `create or replace function`, and a policy that names a function being
