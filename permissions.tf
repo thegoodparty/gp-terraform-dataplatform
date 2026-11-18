@@ -655,3 +655,112 @@ resource "databricks_grant" "airbyte_source_finance_dbt_cloud" {
   principal  = data.databricks_service_principal.dbt_cloud.application_id
   privileges = ["USE_SCHEMA", "SELECT"]
 }
+
+# =============================================================================
+# raw and dev catalog permissions
+# =============================================================================
+
+# Declared as tables rather than as grant blocks, so who reaches raw is one list
+# a reviewer can read and a test can assert, and so a missing principal is a
+# missing row rather than a missing block.
+locals {
+  # raw holds the unmasked values, so every entry is an exception with a reason.
+  # analyst is deliberately absent: it reads prod, where raw's tags and policies
+  # travel with the data through every view. Airflow and matcha reach raw by
+  # assuming ingestor once roles replace their standing grants.
+  raw_catalog_grants = {
+    "dbt_cloud" = {
+      principal  = data.databricks_service_principal.dbt_cloud.application_id
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
+    }
+    "pii_viewer" = {
+      principal  = databricks_group.role_pii_viewer.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+    }
+    "ingestor" = {
+      principal  = databricks_group.role_ingestor.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
+    }
+    "transformer" = {
+      principal  = databricks_group.role_transformer.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
+    }
+  }
+
+  # dev holds personal and CI work, so everyone who builds reads and writes here.
+  # The policies attach to the schemas dbt creates, so a tagged table copied into
+  # dev arrives masked exactly as it does in prod.
+  dev_catalog_grants = {
+    # USE_SCHEMA is not implied by creating a schema, and analyst has to use the
+    # one it creates on its own first run. prod's grant carries it for the same
+    # reason.
+    "analyst" = {
+      principal  = databricks_group.role_analyst.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "CREATE_SCHEMA"]
+    }
+    "pii_viewer" = {
+      principal  = databricks_group.role_pii_viewer.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+    }
+    "transformer" = {
+      principal  = databricks_group.role_transformer.display_name
+      privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
+    }
+    "admin" = {
+      principal  = databricks_group.role_admin.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "MANAGE"]
+    }
+    "dbt_cloud" = {
+      principal  = data.databricks_service_principal.dbt_cloud.application_id
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
+    }
+    # CI builds under this principal, so it creates the ci_<pr> schema itself
+    # rather than assuming transformer, which is a person's role.
+    "github_action" = {
+      principal  = data.databricks_service_principal.github_action.application_id
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
+    }
+    "dbt_developers" = {
+      principal  = databricks_group.dbt_developers_account.display_name
+      privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
+    }
+  }
+}
+
+resource "databricks_grants" "catalog_raw" {
+  catalog = databricks_catalog.raw.name
+
+  dynamic "grant" {
+    for_each = local.raw_catalog_grants
+    content {
+      principal  = grant.value.principal
+      privileges = grant.value.privileges
+    }
+  }
+
+  depends_on = [
+    databricks_group.role_pii_viewer,
+    databricks_group.role_ingestor,
+    databricks_group.role_transformer
+  ]
+}
+
+resource "databricks_grants" "catalog_dev" {
+  catalog = databricks_catalog.dev.name
+
+  dynamic "grant" {
+    for_each = local.dev_catalog_grants
+    content {
+      principal  = grant.value.principal
+      privileges = grant.value.privileges
+    }
+  }
+
+  depends_on = [
+    databricks_group.dbt_developers_account,
+    databricks_group.role_analyst,
+    databricks_group.role_pii_viewer,
+    databricks_group.role_transformer,
+    databricks_group.role_admin
+  ]
+}

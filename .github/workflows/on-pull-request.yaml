@@ -6,6 +6,10 @@ on:
       - main
 
 jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/tf-test.yaml
+
   plan:
     name: Plan
     uses: ./.github/workflows/tf-plan.yaml
