@@ -9,9 +9,10 @@
 #
 # TO is the analyst group and nothing else. The four higher roles are nested
 # inside it, so analyst's reach is all five, and EXCEPT pii_viewer takes
-# pii_viewer and the transformer nested inside it back out. That is the intended
-# phase 1 reach: masked for the floor, clear for the elevated roles, and nobody
-# in any of them yet.
+# pii_viewer and the transformer nested inside it back out. Note which roles that
+# leaves masked: ingestor and admin are nested in analyst only, not in
+# pii_viewer, so they are subject to these policies like analyst is. Nobody is in
+# any of the five yet.
 #
 # pii_services and ingestor are deliberately absent from EXCEPT. The first does
 # not exist yet and arrives in the catalog split, and a policy cannot name a
