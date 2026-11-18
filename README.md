@@ -72,9 +72,12 @@ prod reads a raw table, Unity Catalog evaluates the policy on the table
 underneath the view, and there is none, so the view would carry no mask. Nothing
 reads raw from prod today.
 
-`dev` holds a personal schema per user and a `ci_<pr>` schema per pull request.
-Builds there run under the reader roles, so tagged values arrive masked, and
-elevated work goes in a `pii_<user>` schema that only `pii_viewer` can read.
+`dev` holds a personal schema per user and a `ci_<pr>` schema per pull request,
+the latter created by dbt Cloud. No policy attaches to `dev` yet, so unlike
+prod, nothing masks a relation built there. That is bounded by the grants: the
+`ci_<pr>` schemas are built under the principal that can already read raw, and a
+person's ordinary dev work is masked only where it reads prod through deferral.
+Elevated work goes in a `pii_<user>` schema that only `pii_viewer` can read.
 
 Both catalogs' grants are listed in one table each in `permissions.tf` rather
 than as individual blocks, so who reaches raw is a list a reviewer can read.

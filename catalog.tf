@@ -46,7 +46,7 @@ resource "databricks_catalog" "raw" {
 # schemas dbt creates per user and per pull request stop accumulating in prod.
 resource "databricks_catalog" "dev" {
   name           = "dev"
-  comment        = "Personal dev schemas and CI builds. Built under the reader roles, so values arrive masked."
+  comment        = "Personal dev schemas and CI builds. No policy attaches here yet, so grants alone bound what they hold."
   isolation_mode = "OPEN"
   storage_root   = "${var.catalog_storage_bucket}/dev"
 

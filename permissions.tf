@@ -688,8 +688,8 @@ locals {
   }
 
   # dev holds personal and CI work, so everyone who builds reads and writes here.
-  # The policies attach to the schemas dbt creates, so a tagged table copied into
-  # dev arrives masked exactly as it does in prod.
+  # No policy attaches to dev (policies.tf covers the prod catalog only), so a
+  # relation built here from raw is held by these grants alone, not by a mask.
   dev_catalog_grants = {
     # USE_SCHEMA is not implied by creating a schema, and analyst has to use the
     # one it creates on its own first run. prod's grant carries it for the same
