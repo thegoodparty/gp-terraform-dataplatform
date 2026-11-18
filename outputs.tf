@@ -133,6 +133,14 @@ output "governance_schema" {
   value       = databricks_schema.governance.id
 }
 
+output "analyst_policy_names" {
+  description = "Names of the catalog policies applied to analyst. These are what SHOW EFFECTIVE POLICIES and DESCRIBE POLICY report."
+  value = concat(
+    [for key, policy in databricks_policy_info.mask_columns : policy.name],
+    [databricks_policy_info.closed_until_classified.name],
+  )
+}
+
 # =============================================================================
 # Bifrost usage export (bifrost_usage_storage.tf)
 # =============================================================================

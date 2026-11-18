@@ -100,10 +100,15 @@ resource "databricks_grants" "catalog_main" {
     privileges = ["USE_CATALOG"]
   }
 
-  # github-action service principal for CI/CD
+  # github-action service principal for CI/CD. MANAGE is what lets CI create ABAC
+  # policies on the catalog: policy DDL needs MANAGE on the securable, next to
+  # EXECUTE on the function each policy names (governance.tf). The catalog's owner
+  # is a person, so today this principal changes grants through admin rights
+  # rather than ownership; declaring MANAGE means policy creation rests on a grant
+  # in this file instead of on that membership.
   grant {
     principal  = data.databricks_service_principal.github_action.application_id
-    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "MANAGE"]
   }
 
   # airflow service principals can create and own their own schemas

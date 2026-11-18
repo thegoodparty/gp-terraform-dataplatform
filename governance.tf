@@ -83,5 +83,13 @@ resource "databricks_grants" "governance" {
     privileges = ["USE_SCHEMA", "EXECUTE"]
   }
 
+  # Creating a policy needs EXECUTE on the function it names. github-action owns
+  # this schema through Terraform but not the functions dbt builds inside it, so
+  # the grant is explicit rather than implied by ownership.
+  grant {
+    principal  = data.databricks_service_principal.github_action.application_id
+    privileges = ["EXECUTE"]
+  }
+
   depends_on = [databricks_group.role_analyst]
 }
