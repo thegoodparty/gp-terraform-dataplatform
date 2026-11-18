@@ -53,9 +53,57 @@ Terraform configuration for managing the Good Party data infrastructure:
 
 ### What It Manages
 
-- Catalog: `goodparty_data_catalog`
+- Catalogs: `goodparty_data_catalog` (everything dbt builds), `raw` (loader
+  output), `dev` (personal and CI work), and `segment_storage`
 - Mart schemas with automatic reader groups and permissions
 - Service principal access (dbt Cloud, Airbyte, etc.)
+
+### The raw and dev catalogs
+
+`raw` holds what the loaders write: Airbyte's streams, the L2 voter files, and
+the sources the pipelines produce. It is a separate catalog because `analyst`
+holds `SELECT` across all of `goodparty_data_catalog` and Unity Catalog has no
+`DENY`, so a raw schema inside prod would be readable by every masked reader.
+Someone who needs raw in the clear reads it as `pii_viewer` or `transformer`.
+
+Raw tables carry tags, but nothing attaches a policy to that catalog yet, so raw
+is held by its grants alone. That matters for the next step: once a dbt view in
+prod reads a raw table, Unity Catalog evaluates the policy on the table
+underneath the view, and there is none, so the view would carry no mask. Nothing
+reads raw from prod today.
+
+`dev` holds a personal schema per user and a `ci_<pr>` schema per pull request.
+Builds there run under the reader roles, so tagged values arrive masked, and
+elevated work goes in a `pii_<user>` schema that only `pii_viewer` can read.
+
+Both catalogs' grants are listed in one table each in `permissions.tf` rather
+than as individual blocks, so who reaches raw is a list a reviewer can read.
+`tests/catalogs.tftest.hcl` asserts the shape of both: `analyst` holds nothing
+on raw, the general reader groups hold nothing on raw, and the roles that build
+can create the schemas they need on dev.
+
+**The masks do not reach raw yet.** A policy is scoped to one catalog, and
+`policies.tf` attaches the analyst masks and the row filter to
+`goodparty_data_catalog` only. The blocker is the governance functions: dbt
+builds them into `<target catalog>.<target schema>` on a non-prod target, so
+there is no `dev.governance` or `raw.governance` schema for a policy to name,
+and the function name has to resolve in the catalog the policy is attached to.
+Until that is settled, raw is protected by its grants alone. Give the governance
+models a fixed `database` and `schema` for every target, add the matching schema
+and grants to `raw`, and attach the masks there. Do not point a prod view at a
+raw table before then.
+
+### Migration order
+
+The split only works in this order, and a build that runs out of it fails rather
+than doing something quiet:
+
+1. Apply this stack. `raw` and `dev` exist, empty, and dbt reads `raw` from then
+   on.
+2. Copy every source schema into `raw` (same schema and table names), and copy
+   the governance schema's salt row and functions. Until this lands, a build
+   reads nothing.
+3. The first build writes to `dev` for every non-prod target.
 
 ### Adding a New Mart
 
