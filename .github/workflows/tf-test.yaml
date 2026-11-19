@@ -1,0 +1,40 @@
+name: Terraform Test
+
+# The mocked-provider tests in tests/. They plan this stack against fake
+# provider data, so they need no credentials, no state and no lock, which is
+# what lets them run on pull request code before the real plan job starts.
+on:
+  workflow_call:
+
+env:
+  TF_VERSION: '1.14.4'
+
+jobs:
+  test:
+    name: Terraform Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform Format
+        run: terraform fmt -check -diff
+
+      # No backend: the tests never read or write state.
+      - name: Terraform Init
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Test
+        run: terraform test

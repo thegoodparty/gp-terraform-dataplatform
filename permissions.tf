@@ -698,3 +698,113 @@ resource "databricks_grant" "segment_source_schema_dbt_cloud_apply_tag" {
   principal  = data.databricks_service_principal.dbt_cloud.application_id
   privileges = ["APPLY_TAG"]
 }
+
+# =============================================================================
+# raw and dev catalog permissions
+# =============================================================================
+
+# Declared as tables rather than as grant blocks, so who reaches raw is one list
+# a reviewer can read and a test can assert, and so a missing principal is a
+# missing row rather than a missing block.
+locals {
+  # raw holds the unmasked values, so every entry is an exception with a reason.
+  # analyst is deliberately absent: it reads prod, and no policy attaches to raw
+  # yet, so a prod view over raw would carry no mask either. Airflow and matcha
+  # reach raw by assuming ingestor once roles replace their standing grants.
+  raw_catalog_grants = {
+    "dbt_cloud" = {
+      principal  = data.databricks_service_principal.dbt_cloud.application_id
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
+    }
+    "pii_viewer" = {
+      principal  = databricks_group.role_pii_viewer.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+    }
+    "ingestor" = {
+      principal  = databricks_group.role_ingestor.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
+    }
+    "transformer" = {
+      principal  = databricks_group.role_transformer.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
+    }
+  }
+
+  # dev holds personal and CI work, so everyone who builds reads and writes here.
+  # No policy attaches to dev (policies.tf covers the prod catalog only), so a
+  # relation built here from raw is held by these grants alone, not by a mask.
+  dev_catalog_grants = {
+    # USE_SCHEMA is not implied by creating a schema, and analyst has to use the
+    # one it creates on its own first run. prod's grant carries it for the same
+    # reason.
+    "analyst" = {
+      principal  = databricks_group.role_analyst.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "CREATE_SCHEMA"]
+    }
+    "pii_viewer" = {
+      principal  = databricks_group.role_pii_viewer.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+    }
+    "transformer" = {
+      principal  = databricks_group.role_transformer.display_name
+      privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
+    }
+    "admin" = {
+      principal  = databricks_group.role_admin.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "MANAGE"]
+    }
+    "dbt_cloud" = {
+      principal  = data.databricks_service_principal.dbt_cloud.application_id
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
+    }
+    # Read-only, and not a dbt builder: the ci_<pr> schemas are owned by
+    # dbt_cloud, which runs the build. This principal reads a dev relation for
+    # the checks CI runs against one, and nothing more.
+    "github_action" = {
+      principal  = data.databricks_service_principal.github_action.application_id
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+    }
+    "dbt_developers" = {
+      principal  = databricks_group.dbt_developers_account.display_name
+      privileges = ["USE_CATALOG", "CREATE_SCHEMA"]
+    }
+  }
+}
+
+resource "databricks_grants" "catalog_raw" {
+  catalog = databricks_catalog.raw.name
+
+  dynamic "grant" {
+    for_each = local.raw_catalog_grants
+    content {
+      principal  = grant.value.principal
+      privileges = grant.value.privileges
+    }
+  }
+
+  depends_on = [
+    databricks_group.role_pii_viewer,
+    databricks_group.role_ingestor,
+    databricks_group.role_transformer
+  ]
+}
+
+resource "databricks_grants" "catalog_dev" {
+  catalog = databricks_catalog.dev.name
+
+  dynamic "grant" {
+    for_each = local.dev_catalog_grants
+    content {
+      principal  = grant.value.principal
+      privileges = grant.value.privileges
+    }
+  }
+
+  depends_on = [
+    databricks_group.dbt_developers_account,
+    databricks_group.role_analyst,
+    databricks_group.role_pii_viewer,
+    databricks_group.role_transformer,
+    databricks_group.role_admin
+  ]
+}
