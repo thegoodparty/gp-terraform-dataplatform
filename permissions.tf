@@ -728,6 +728,14 @@ locals {
       principal  = databricks_group.role_transformer.display_name
       privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
     }
+    # A Databricks ingestion pipeline (Lakeflow Connect) writes as the person who
+    # runs it, not as a service principal, so whoever sets one up needs ingestor's
+    # write rights here directly. Admin sits under analyst only, so it inherits
+    # nothing on raw.
+    "admin" = {
+      principal  = databricks_group.role_admin.display_name
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
+    }
   }
 
   # dev holds personal and CI work, so everyone who builds reads and writes here.
@@ -785,7 +793,8 @@ resource "databricks_grants" "catalog_raw" {
   depends_on = [
     databricks_group.role_pii_viewer,
     databricks_group.role_ingestor,
-    databricks_group.role_transformer
+    databricks_group.role_transformer,
+    databricks_group.role_admin
   ]
 }
 

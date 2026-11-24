@@ -160,6 +160,13 @@ run "raw_reads_in_the_clear_for_the_roles_that_must" {
     condition     = !contains(local.raw_catalog_grants["transformer"].privileges, "MODIFY")
     error_message = "transformer reads raw and writes prod; it has no business modifying raw."
   }
+
+  assert {
+    condition = alltrue([
+      for p in ["CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"] : contains(local.raw_catalog_grants["admin"].privileges, p)
+    ])
+    error_message = "admin sets up the ingestion pipelines that write raw as the person running them."
+  }
 }
 
 run "dev_holds_personal_and_ci_work" {
