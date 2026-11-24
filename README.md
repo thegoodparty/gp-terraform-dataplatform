@@ -390,11 +390,10 @@ Two ways out, and the choice is deliberate:
    More moving parts, and `open` does not propagate, so the exemption stays local
    to the object it is set on.
 
-Neither is applied here. This PR adds the policies and leaves the salt untagged,
-because the tag is a classification decision rather than a consequence of the
-policy shape, and because nobody is in `analyst` to be affected. The masking
-verification measures `length(governance.pseudonym(...))` first, before any other
-check, and it is what forces this decision.
+Neither is applied. The policies were added with the salt untagged, because the
+tag is a classification decision rather than a consequence of the policy shape.
+The masking verification measures `length(governance.pseudonym(...))` first,
+before any other check, and it is what forces this decision.
 
 Both options open the salt to every masked reader, because lifting the row
 filter lifts it for direct selects too, and a salt with a list of candidate
@@ -429,11 +428,13 @@ are nested inside `analyst`, so its reach is all five; `EXCEPT pii_viewer` takes
 and an `ingestor` exemption on this catalog would cover the marts as well as
 raw. Both arrive in the catalog split.
 
-**Applying these changes nothing for anyone yet.** The policies act only on
-principals in `TO`, and every role group is empty. Do not read a successful
-apply as "the roll-out is done": the day the first person joins `analyst`, a
-table nobody has classified returns no rows, and that is most of the catalog
-today.
+**The first members are the platform admins.** `admin group` sits in `ingestor`
+so its members can set up ingestion pipelines that write raw, and `ingestor` is
+nested in `analyst`, so every policy here applies to them, `github-action`
+included. A table nobody has classified returns them no rows, and that is most
+of the catalog today, so an empty admin query is not missing data. Identifier
+columns error rather than hash until the salt is read through a secret (above).
+An admin who needs clear values on prod needs `pii_viewer` as well.
 
 **The order matters, and it is a hard order.** The functions must exist before
 the policies are created, because a policy names one and a missing function
