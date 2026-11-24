@@ -1,6 +1,10 @@
-# Read-only access to the Bifrost usage export bucket, which lives in the workbench
+# Read-only access to the usage export bucket, which lives in the workbench
 # account and is owned by thegoodparty/ops. That repo's bucket policy admits this
 # role by aws:PrincipalArn, so the role's account is the one this deploys into.
+#
+# One role and one storage credential read two prefixes for two exporters, the
+# Bifrost gateway's and the delegate swarm's, so each gets its own external
+# location.
 #
 # Apply order is credential -> assume-role-policy data source -> role, because the
 # trust needs the credential's computed external_id. skip_validation on the
@@ -15,6 +19,17 @@ locals {
   bifrost_usage_bucket = "goodparty-workbench-bifrost-usage"
   bifrost_usage_prefix = "bifrost/logs"
 
+  # Must match the parent of thegoodparty/ops' SWARM_EXPORT_PREFIXES, which are
+  # delegate-swarm/session-cost and delegate-swarm/task-edge. A sibling of
+  # bifrost/logs rather than a child of it: Unity Catalog refuses an external
+  # location nested inside another, which is why this is a second location and
+  # not a subpath of the first.
+  delegate_swarm_prefix = "delegate-swarm"
+
+  # What the role reads, and the whole of it. Wider than the bucket policy, which
+  # admits only the swarm's two table prefixes under delegate-swarm/.
+  usage_read_prefixes = [local.bifrost_usage_prefix, local.delegate_swarm_prefix]
+
   # Resolved, not written down: the workbench bucket policy pins this ARN, and a
   # wrong account denies every read.
   bifrost_usage_role_name = "bifrost-usage-export-reader"
@@ -27,7 +42,7 @@ locals {
 resource "databricks_storage_credential" "bifrost_usage" {
   name      = local.bifrost_usage_role_name
   read_only = true
-  comment   = "Reads the Bifrost usage export prefix in the workbench account, for the finance mart's request log."
+  comment   = "Reads the usage export prefixes in the workbench account: the Bifrost gateway's and the delegate swarm's."
 
   aws_iam_role {
     role_arn = local.bifrost_usage_role_arn
@@ -47,7 +62,7 @@ data "databricks_aws_unity_catalog_assume_role_policy" "bifrost_usage" {
 
 resource "aws_iam_role" "bifrost_usage" {
   name        = local.bifrost_usage_role_name
-  description = "Assumed by Databricks (Unity Catalog) to read the Bifrost usage export prefix."
+  description = "Assumed by Databricks (Unity Catalog) to read the usage export prefixes."
   tags        = local.bifrost_usage_tags
 
   assume_role_policy = data.databricks_aws_unity_catalog_assume_role_policy.bifrost_usage.json
@@ -68,7 +83,8 @@ resource "aws_iam_role_policy" "bifrost_usage" {
         Effect = "Allow"
         Action = ["s3:GetObject", "s3:GetObjectVersion"]
         Resource = [
-          "arn:aws:s3:::${local.bifrost_usage_bucket}/${local.bifrost_usage_prefix}/*",
+          for prefix in local.usage_read_prefixes :
+          "arn:aws:s3:::${local.bifrost_usage_bucket}/${prefix}/*"
         ]
       },
       {
@@ -86,7 +102,11 @@ resource "aws_iam_role_policy" "bifrost_usage" {
         Resource = "arn:aws:s3:::${local.bifrost_usage_bucket}"
         Condition = {
           StringLike = {
-            "s3:prefix" = ["${local.bifrost_usage_prefix}/*", local.bifrost_usage_prefix]
+            # Both the location root and its contents: Databricks lists each
+            # location's prefix when it validates one.
+            "s3:prefix" = flatten([
+              for prefix in local.usage_read_prefixes : [prefix, "${prefix}/*"]
+            ])
           }
         }
       },
@@ -112,6 +132,21 @@ resource "databricks_external_location" "bifrost_usage" {
   url             = "s3://${local.bifrost_usage_bucket}/${local.bifrost_usage_prefix}"
   credential_name = databricks_storage_credential.bifrost_usage.name
   comment         = "Bifrost gateway usage export, read-only. Written by a scheduled job in the workbench account."
+  read_only       = true
+  # Holds no data of its own: removing this pointer deletes nothing in S3.
+  force_destroy = true
+
+  depends_on = [time_sleep.bifrost_usage_iam_propagation]
+}
+
+# The swarm's two table prefixes sit under one location, because a location may be
+# read at a subpath: each loader's COPY INTO names delegate-swarm/session-cost/ or
+# delegate-swarm/task-edge/ below this root.
+resource "databricks_external_location" "delegate_swarm_usage" {
+  name            = "delegate_swarm_usage_export"
+  url             = "s3://${local.bifrost_usage_bucket}/${local.delegate_swarm_prefix}"
+  credential_name = databricks_storage_credential.bifrost_usage.name
+  comment         = "Delegate swarm usage export, read-only. Written by the swarm host's own scheduled job."
   # Set on both credential and location because a location defaults to read-write.
   read_only = true
   # Holds no data of its own: removing this pointer deletes nothing in S3.
@@ -125,6 +160,21 @@ resource "databricks_external_location" "bifrost_usage" {
 # engineers: they read the mart, not the raw landing.
 resource "databricks_grants" "bifrost_usage_external_location" {
   external_location = databricks_external_location.bifrost_usage.id
+
+  dynamic "grant" {
+    for_each = databricks_service_principal.airflow
+    content {
+      principal  = grant.value.application_id
+      privileges = ["READ_FILES"]
+    }
+  }
+}
+
+# The same principals and the same privilege, on the other location. Grant sets are
+# per securable, so this has to be its own resource; a grant on the Bifrost location
+# reaches nothing under delegate-swarm/.
+resource "databricks_grants" "delegate_swarm_usage_external_location" {
+  external_location = databricks_external_location.delegate_swarm_usage.id
 
   dynamic "grant" {
     for_each = databricks_service_principal.airflow

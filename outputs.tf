@@ -146,11 +146,16 @@ output "analyst_policy_names" {
 # =============================================================================
 
 output "bifrost_usage_reader_role_arn" {
-  description = "IAM role Unity Catalog assumes to read the Bifrost usage export. The bucket policy in thegoodparty/ops admits exactly this ARN."
+  description = "IAM role Unity Catalog assumes to read the usage export prefixes. The bucket policy in thegoodparty/ops admits exactly this ARN."
   value       = aws_iam_role.bifrost_usage.arn
 }
 
 output "bifrost_usage_external_location_url" {
   description = "The export prefix as Unity Catalog sees it; pairs with the loader's bifrost_export_bucket and bifrost_export_prefix Airflow Variables."
   value       = databricks_external_location.bifrost_usage.url
+}
+
+output "delegate_swarm_usage_external_location_url" {
+  description = "The swarm export root as Unity Catalog sees it; a loader reaches delegate-swarm/session-cost and delegate-swarm/task-edge below it."
+  value       = databricks_external_location.delegate_swarm_usage.url
 }
