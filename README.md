@@ -72,6 +72,13 @@ prod reads a raw table, Unity Catalog evaluates the policy on the table
 underneath the view, and there is none, so the view would carry no mask. Nothing
 reads raw from prod today.
 
+Raw's source schemas are not managed here. `ingestor` holds `CREATE_SCHEMA` on
+raw, so whoever sets up a loader creates its schema (`raw.amplitude`,
+`raw.hubspot`, ...) and a new source needs no Terraform change, the way
+`transformer` creates its own schemas on dev. A schema is owned by the person
+who creates it, so hand it to the role straight after:
+`alter schema raw.<source> owner to ingestor`.
+
 `dev` holds a personal schema per user and a `ci_<pr>` schema per pull request,
 the latter created by dbt Cloud. No policy attaches to `dev` yet, so unlike
 prod, nothing masks a relation built there. That is bounded by the grants: the

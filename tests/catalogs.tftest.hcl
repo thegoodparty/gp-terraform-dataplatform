@@ -84,10 +84,6 @@ override_resource {
   target = databricks_schema.model_predictions
 }
 
-override_resource {
-  target = databricks_schema.amplitude_ingestion
-}
-
 
 
 variables {

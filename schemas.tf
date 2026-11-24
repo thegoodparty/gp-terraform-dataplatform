@@ -93,27 +93,3 @@ resource "databricks_schema" "marts" {
     prevent_destroy = true
   }
 }
-
-# Created in the console for the Amplitude ingestion pipeline, so it is imported
-# rather than created here. The catalog's grants reach it; it needs none of its own.
-import {
-  to = databricks_schema.amplitude_ingestion
-  id = "raw.amplitude_ingestion"
-}
-
-resource "databricks_schema" "amplitude_ingestion" {
-  catalog_name = databricks_catalog.raw.name
-  name         = "amplitude_ingestion"
-  comment      = "Amplitude export tables landed by the ingestion pipeline."
-
-  properties = {
-    managed_by = "terraform"
-    purpose    = "ingestion"
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-
-  depends_on = [databricks_grants.catalog_raw]
-}
