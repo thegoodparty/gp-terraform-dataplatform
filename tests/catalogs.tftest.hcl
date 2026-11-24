@@ -99,6 +99,13 @@ override_resource {
   target = databricks_schema.model_predictions
 }
 
+# The salt tag is imported from live state, and a mock provider cannot serve an
+# import. Overriding it makes the import a no-op plan, which is all these tests
+# need from it.
+override_resource {
+  target = databricks_entity_tag_assignment.pseudonym_salt_classified
+}
+
 variables {
   databricks_account_id             = "00000000-0000-0000-0000-000000000000"
   workspace_id                      = "0000000000000000"
@@ -229,11 +236,11 @@ run "analyst_reads_only_the_prod_schemas_it_is_listed_on" {
     condition = !anytrue(flatten([
       for grant in databricks_grants.catalog_main.grant : [
         for privilege in grant.privileges : grant.principal == databricks_group.role_analyst.display_name && contains(
-          ["SELECT", "USE_SCHEMA", "CREATE_SCHEMA"], privilege
+          ["SELECT", "USE_SCHEMA"], privilege
         )
       ]
     ]))
-    error_message = "analyst must hold neither SELECT nor USE_SCHEMA nor CREATE_SCHEMA on the catalog: they reach every schema in it, raw and finance and the salt included."
+    error_message = "analyst must hold neither SELECT nor USE_SCHEMA on the catalog: they reach every schema in it, raw and finance and the salt included. CREATE_SCHEMA is fine and required."
   }
 
   assert {
@@ -250,5 +257,31 @@ run "analyst_reads_only_the_prod_schemas_it_is_listed_on" {
       ])
     ])
     error_message = "analyst reads the dbt schema and every mart except finance, and a mart that silently drops its analyst grant breaks the masked readers."
+  }
+}
+
+# The catalog-wide read analyst gave up was shared with pii_viewer, which holds
+# every role above it, and with the transformer nested inside pii_viewer.
+run "the_unmasked_roles_keep_their_catalog_read" {
+  command = plan
+
+  assert {
+    condition = anytrue([
+      for grant in databricks_grants.catalog_main.grant : grant.principal == databricks_group.role_pii_viewer.display_name && alltrue(
+        [for privilege in ["USE_SCHEMA", "SELECT"] : contains(grant.privileges, privilege)]
+      )
+    ])
+    error_message = "pii_viewer holds the catalog-wide read, or it and the transformer nested inside it lose every schema analyst no longer reaches."
+  }
+
+  assert {
+    condition = !anytrue(flatten([
+      for grant in databricks_grants.catalog_main.grant : [
+        for privilege in grant.privileges : grant.principal == databricks_group.role_ingestor.display_name && contains(
+          ["SELECT", "USE_SCHEMA"], privilege
+        )
+      ]
+    ]))
+    error_message = "ingestor must hold no catalog read: it writes raw, and a catalog-wide SELECT would let any loader running as ingestor read the salt."
   }
 }

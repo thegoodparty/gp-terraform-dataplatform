@@ -55,6 +55,35 @@ resource "databricks_sql_table" "pseudonym_salt" {
   }
 }
 
+# The identifier mask reads this table, and Databricks refuses a mask that reads a
+# table with its own row filter. Unclassified, the closed_until_classified
+# filter lands here and every identifier column fails for a masked reader with
+# UNSUPPORTED_NESTED_ROW_OR_COLUMN_ACCESS_POLICY. Classifying it lifts the filter.
+#
+# Applying it by hand on 2026-11-24 fixed the mask, but left the table held by
+# grants alone, and analyst's catalog-wide SELECT reached it. Safe to declare
+# now that the allowlist has taken that SELECT away and left analyst with
+# USE_SCHEMA and EXECUTE on this schema only: a masked read through pseudonym
+# still works, and a direct select of the salt is refused.
+import {
+  to = databricks_entity_tag_assignment.pseudonym_salt_classified
+  id = "tables,${databricks_catalog.main.name}.${databricks_schema.governance.name}.pseudonym_salt,classified"
+}
+
+resource "databricks_entity_tag_assignment" "pseudonym_salt_classified" {
+  entity_type = "tables"
+  entity_name = "${databricks_catalog.main.name}.${databricks_schema.governance.name}.${databricks_sql_table.pseudonym_salt.name}"
+  tag_key     = "classified"
+  tag_value   = "true"
+
+  depends_on = [
+    databricks_tag_policy.governed,
+    # The tag lifts the row filter, so it must not land before analyst has lost
+    # its catalog-wide SELECT.
+    databricks_grants.catalog_main,
+  ]
+}
+
 # Authoritative, and safe here: this schema is created by this stack, and the
 # only other writer is dbt_cloud's own builds.
 #
@@ -63,13 +92,11 @@ resource "databricks_sql_table" "pseudonym_salt" {
 # working as analyst can run governance.pseudonym(...) to look a row up; the
 # higher roles inherit it through nesting.
 #
-# The salt table gets no grant of its own, and a caller needs only EXECUTE. That
-# is not the same as the salt being unreadable: catalog-level grants reach every
-# schema in this catalog, so analyst (USE_SCHEMA + SELECT), data-engineers,
-# dbt_cloud, github-action and the airflow principals can all read it, and the
-# catalog-level MODIFY that ingestor and transformer hold reaches it too. The
-# Notes' position is that the salt is not a secret from staff; a catalog the
-# role grants do not reach is the change that would make it one.
+# Analyst holds USE_SCHEMA and EXECUTE and no SELECT, so it reads the functions
+# and not the salt. The salt's tag lifts the row filter, which leaves grants as
+# the only thing between a masked reader and the salt. data-engineers, dbt_cloud,
+# github-action and the airflow principals read it through their catalog-level
+# grants, and so does pii_viewer, which is unmasked by design.
 resource "databricks_grants" "governance" {
   schema = databricks_schema.governance.id
 

@@ -90,8 +90,10 @@ than as individual blocks, so who reaches raw is a list a reviewer can read.
 `tests/catalogs.tftest.hcl` asserts the shape of both: `analyst` holds nothing
 on raw, the general reader groups hold nothing on raw, and the roles that build
 can create the schemas they need on dev. It also asserts prod's analyst scope:
-no `SELECT`, `USE_SCHEMA` or `CREATE_SCHEMA` on the catalog, nothing on
-`mart_finance`, and `SELECT` on `dbt` and on every other mart.
+no `SELECT` and no `USE_SCHEMA` on the catalog, nothing on `mart_finance`, and
+`SELECT` on `dbt` and on every other mart. And it asserts the split of the role
+reads: `pii_viewer` keeps the catalog-wide pair analyst gave up, `ingestor` holds
+neither.
 
 **The masks do not reach raw yet.** A policy is scoped to one catalog, and
 `policies.tf` attaches the analyst masks and the row filter to
@@ -365,15 +367,12 @@ Two rules about that table:
   to debug. Agents here run on a person's login, which can read it, and the
   models behind them are third-party. Every verification reads a count or a
   length instead.
-- **Its `classified` tag is the open question below, not a settled rule.** An
-  earlier version of this section said "never tag it `classified`" on the grounds
-  that it "must stay closed to every masked principal". That reason changed with
-  the analyst allowlist: analyst holds `USE_SCHEMA` and `EXECUTE` here and no
-  `SELECT`, so a principal masked only through analyst cannot read this table
-  directly. A masked principal that holds `SELECT` through another grant can,
-  once the row filter stops closing it; today that is the admin group, through
-  data-engineers. Treat the tag as a decision waiting on the masking
-  verification, described next.
+- **It carries `classified = true`.** Applied by hand on 2026-11-24 so the
+  identifier mask would stop failing, and brought under Terraform by this stack.
+  analyst holds no `SELECT` on `governance`, so a principal masked only through
+  analyst cannot read the table directly and reaches it only through
+  `pseudonym`. A masked principal that holds `SELECT` through another grant can,
+  today the admin group through data-engineers.
 
 **The salt table versus the unclassified row filter. Read this before trusting a
 masked read.**
@@ -394,12 +393,11 @@ the reason the old "never tag it" rule was worth re-reading rather than copying.
 
 Two ways out, and the choice is deliberate:
 
-1. **Tag `pseudonym_salt` `classified = true`.** One tag assignment on one
-   Terraform-owned table. The subquery then reads, and the identifier mask works.
-   The cost: lifting the row filter on this table opens it to any masked
-   principal that also holds `SELECT` through another grant, today the admin
-   group through data-engineers. A principal masked only through `analyst` still
-   gets no direct read, because analyst holds no `SELECT` here.
+1. **Tag `pseudonym_salt` `classified = true`.** This is what the table carries
+   now, applied 2026-11-24 and declared in `governance.tf` since. The subquery
+   reads and the identifier mask works. What holds the table closed is grants:
+   analyst has `USE_SCHEMA` and `EXECUTE` here and no `SELECT`, so it cannot read
+   the salt directly, while the admin group still can through data-engineers.
 2. **Exempt it by a dedicated tag rather than by `classified`,** for example a
    table-level `open = true` with the row filter widened to
    `not has_tag_value('classified', 'true') and not has_tag_value('open', 'true')`.
