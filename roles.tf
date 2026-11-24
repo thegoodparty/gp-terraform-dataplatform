@@ -78,6 +78,8 @@ resource "databricks_group_member" "admin_in_analyst" {
 # The platform admins set up Databricks ingestion pipelines, which write raw as
 # the person running them, so they take ingestor's write rights on raw. Already
 # added in the console; creating a membership that exists is a no-op SCIM add.
+# ingestor also writes prod, but the admin group owns the metastore, so it
+# already holds every right on prod; this adds nothing there.
 resource "databricks_group_member" "admin_group_in_ingestor" {
   provider  = databricks.account
   group_id  = databricks_group.role_ingestor.id

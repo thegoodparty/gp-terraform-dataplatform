@@ -76,6 +76,15 @@ mock_provider "aws" {
 
 mock_provider "astro" {}
 
+
+# Fixed so the membership test can compare ids at plan time.
+override_resource {
+  target          = databricks_group.role_ingestor
+  override_during = plan
+  values = {
+    id = "2222222222"
+  }
+}
 override_resource {
   target = databricks_sql_endpoint.sigma
 }
@@ -160,7 +169,7 @@ run "raw_reads_in_the_clear_for_the_roles_that_must" {
   }
 
   assert {
-    condition     = databricks_group_member.admin_group_in_ingestor.member_id == data.databricks_group.admin_group.id
+    condition     = databricks_group_member.admin_group_in_ingestor.member_id == data.databricks_group.admin_group.id && databricks_group_member.admin_group_in_ingestor.group_id == databricks_group.role_ingestor.id
     error_message = "The admin group reaches raw through ingestor, which is how its ingestion pipelines write."
   }
 
