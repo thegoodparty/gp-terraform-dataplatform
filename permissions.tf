@@ -728,13 +728,12 @@ locals {
       principal  = databricks_group.role_transformer.display_name
       privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
     }
-    # A Databricks ingestion pipeline (Lakeflow Connect) writes as the person who
-    # runs it, not as a service principal, so the platform admins who set one up
-    # need ingestor's write set here directly. This is the workspace admin group,
-    # not the admin role, which has no members.
-    "admin_group" = {
-      principal  = data.databricks_group.admin_group.display_name
-      privileges = ["USE_CATALOG", "USE_SCHEMA", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
+    # Databricks ingestion pipelines (Lakeflow Connect) run as this principal, so
+    # they write raw without lending a person's grants. ingestor's write set, plus
+    # SELECT: a streaming table's refresh reads back the table it writes.
+    "databricks_ingestor" = {
+      principal  = databricks_service_principal.databricks_ingestor.application_id
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
     }
   }
 
@@ -793,7 +792,8 @@ resource "databricks_grants" "catalog_raw" {
   depends_on = [
     databricks_group.role_pii_viewer,
     databricks_group.role_ingestor,
-    databricks_group.role_transformer
+    databricks_group.role_transformer,
+    databricks_mws_permission_assignment.databricks_ingestor
   ]
 }
 
