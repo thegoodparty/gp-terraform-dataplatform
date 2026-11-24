@@ -61,10 +61,15 @@ Terraform configuration for managing the Good Party data infrastructure:
 ### The raw and dev catalogs
 
 `raw` holds what the loaders write: Airbyte's streams, the L2 voter files, and
-the sources the pipelines produce. It is a separate catalog because `analyst`
-holds `SELECT` across all of `goodparty_data_catalog` and Unity Catalog has no
-`DENY`, so a raw schema inside prod would be readable by every masked reader.
+the sources the pipelines produce. It is a separate catalog because Unity
+Catalog has no `DENY`, so the only way to keep a raw schema out of a masked
+reader's reach is for it to sit in a catalog that reader is not granted.
 Someone who needs raw in the clear reads it as `pii_viewer` or `transformer`.
+
+`analyst` reads prod through an allowlist, not through the catalog: `USE_CATALOG`
+at the catalog, then `USE_SCHEMA` and `SELECT` schema by schema on `dbt` and on
+every mart except `mart_finance`. That is why the raw schemas are out of reach
+and why a new schema lands closed to the masked reader.
 
 Raw tables carry tags, but nothing attaches a policy to that catalog yet, so raw
 is held by its grants alone. That matters for the next step: once a dbt view in
@@ -83,7 +88,9 @@ Both catalogs' grants are listed in one table each in `permissions.tf` rather
 than as individual blocks, so who reaches raw is a list a reviewer can read.
 `tests/catalogs.tftest.hcl` asserts the shape of both: `analyst` holds nothing
 on raw, the general reader groups hold nothing on raw, and the roles that build
-can create the schemas they need on dev.
+can create the schemas they need on dev. It also asserts prod's analyst scope:
+no `SELECT`, `USE_SCHEMA` or `CREATE_SCHEMA` on the catalog, nothing on
+`mart_finance`, and `SELECT` on `dbt` and on every other mart.
 
 **The masks do not reach raw yet.** A policy is scoped to one catalog, and
 `policies.tf` attaches the analyst masks and the row filter to
@@ -126,7 +133,10 @@ terraform apply
 This creates:
 - Schema: `goodparty_data_catalog.mart_newmart`
 - Group: `mart_newmart_readers`
-- Grants: USE_SCHEMA, SELECT for readers; CREATE_TABLE, MODIFY for dbt_cloud
+- Grants: USE_SCHEMA and SELECT for the readers group, `analyst` and
+  `dbt_developers`; CREATE_TABLE and MODIFY for dbt_cloud
+- Except `finance`: no `analyst` or `dbt_developers` grant, since its audience is
+  business and finance ops
 
 ### Service principal: `product_analytics`
 
@@ -356,10 +366,11 @@ Two rules about that table:
   length instead.
 - **Its `classified` tag is the open question below, not a settled rule.** An
   earlier version of this section said "never tag it `classified`" on the grounds
-  that it "must stay closed to every masked principal". That reason is already
-  untrue: analyst holds catalog-wide `SELECT` and `USE_SCHEMA`, so analyst can
-  read this table directly today whatever its tags say. Treat the tag as a
-  decision waiting on the masking verification, described next.
+  that it "must stay closed to every masked principal". The reason is no longer
+  the whole story: analyst holds `USE_SCHEMA` and `EXECUTE` here and no `SELECT`,
+  so grants refuse its own reads of the table, but the row filter still closes it
+  for the function's subquery. Treat the tag as a decision waiting on the masking
+  verification, described next.
 
 **The salt table versus the unclassified row filter. Read this before trusting a
 masked read.**
@@ -382,8 +393,9 @@ Two ways out, and the choice is deliberate:
 
 1. **Tag `pseudonym_salt` `classified = true`.** One tag assignment on one
    Terraform-owned table. The subquery then reads, and the identifier mask works.
-   The cost is nil beyond what already exists: the policies apply only to
-   `analyst`, and `analyst` already reaches this table through catalog `SELECT`.
+   The cost is nil: the row filter applies only to `analyst`, which holds no
+   `SELECT` on this schema, so the tag exempts the table for the masked read
+   without opening a read path for anyone.
 2. **Exempt it by a dedicated tag rather than by `classified`,** for example a
    table-level `open = true` with the row filter widened to
    `not has_tag_value('classified', 'true') and not has_tag_value('open', 'true')`.

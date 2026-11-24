@@ -38,6 +38,14 @@ mock_provider "databricks" {
       id = "1234567890"
     }
   }
+  # Known at plan time so the assertions below can read principal names.
+  mock_resource "databricks_service_principal" {
+    defaults = {
+      id             = "1234567890"
+      application_id = "00000000-0000-0000-0000-000000000001"
+    }
+    override_during = plan
+  }
 }
 
 mock_provider "databricks" {
@@ -58,6 +66,13 @@ mock_provider "databricks" {
     defaults = {
       id = "1234567890"
     }
+  }
+  mock_resource "databricks_service_principal" {
+    defaults = {
+      id             = "1234567890"
+      application_id = "00000000-0000-0000-0000-000000000001"
+    }
+    override_during = plan
   }
 }
 
@@ -201,5 +216,39 @@ run "dev_holds_personal_and_ci_work" {
   assert {
     condition     = contains(local.dev_catalog_grants["dbt_cloud"].privileges, "CREATE_TABLE")
     error_message = "dbt Cloud materializes dev relations itself."
+  }
+}
+
+# analyst is the masked role. A catalog-wide SELECT reached the raw sources, the
+# CI and personal schemas and the pseudonym salt, so its read scope is an
+# explicit list. Anything not on it is closed to analyst, and that is the point.
+run "analyst_reads_only_the_prod_schemas_it_is_listed_on" {
+  command = plan
+
+  assert {
+    condition = !anytrue(flatten([
+      for grant in databricks_grants.catalog_main.grant : [
+        for privilege in grant.privileges : grant.principal == databricks_group.role_analyst.display_name && contains(
+          ["SELECT", "USE_SCHEMA", "CREATE_SCHEMA"], privilege
+        )
+      ]
+    ]))
+    error_message = "analyst must hold neither SELECT nor USE_SCHEMA nor CREATE_SCHEMA on the catalog: they reach every schema in it, raw and finance and the salt included."
+  }
+
+  assert {
+    condition = !anytrue([
+      for grant in databricks_grants.mart_schemas[local.finance_mart].grant : grant.principal == databricks_group.role_analyst.display_name
+    ])
+    error_message = "analyst must hold nothing on the finance mart; its audience is business and finance ops."
+  }
+
+  assert {
+    condition = contains(databricks_grant.analyst_dbt.privileges, "SELECT") && alltrue([
+      for mart, grants in databricks_grants.mart_schemas : mart == local.finance_mart ? true : anytrue([
+        for grant in grants.grant : grant.principal == databricks_group.role_analyst.display_name && contains(grant.privileges, "SELECT")
+      ])
+    ])
+    error_message = "analyst reads the dbt schema and every mart except finance, and a mart that silently drops its analyst grant breaks the masked readers."
   }
 }

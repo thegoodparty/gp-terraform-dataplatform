@@ -121,9 +121,15 @@ resource "databricks_grants" "catalog_main" {
   }
 
   # Governance roles. Each grant is what that role adds on top of inherited ones.
+
+  # USE_CATALOG only. analyst is the masked role, and catalog-wide USE_SCHEMA +
+  # SELECT reached every schema in the catalog: the CI and personal ones, the raw
+  # sources, the finance mart and the pseudonym salt. Its read scope is the
+  # per-schema allowlist in mart_schemas and analyst_dbt below instead, so a
+  # schema nobody lists stays closed to analyst.
   grant {
     principal  = databricks_group.role_analyst.display_name
-    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
+    privileges = ["USE_CATALOG"]
   }
 
   grant {
@@ -295,10 +301,38 @@ resource "databricks_grants" "mart_schemas" {
     }
   }
 
+  # analyst's read scope, standing in for the catalog-wide SELECT it used to
+  # hold. Every mart but finance: analyst is masked, so what it reads comes back
+  # masked, and a mart reaches this stack only by a reviewed edit to
+  # config/marts.yaml.
+  dynamic "grant" {
+    for_each = each.key == local.finance_mart ? [] : [1]
+    content {
+      principal = databricks_group.role_analyst.display_name
+      privileges = [
+        "USE_SCHEMA",
+        "SELECT"
+      ]
+    }
+  }
+
   depends_on = [
     databricks_group.mart_readers_account,
-    databricks_group.dbt_developers_account
+    databricks_group.dbt_developers_account,
+    databricks_group.role_analyst
   ]
+}
+
+# =============================================================================
+# analyst read scope
+# =============================================================================
+# The one schema analyst reads that is not a mart. dbt is built and owned by
+# dbt_cloud and not declared in this stack, so a singular grant: the
+# authoritative plural would revoke every other principal's grants on it.
+resource "databricks_grant" "analyst_dbt" {
+  schema     = "${databricks_catalog.main.name}.dbt"
+  principal  = databricks_group.role_analyst.display_name
+  privileges = ["USE_SCHEMA", "SELECT"]
 }
 
 # Singular grant won't clobber grants set outside Terraform
