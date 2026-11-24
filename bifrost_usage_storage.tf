@@ -122,9 +122,18 @@ resource "aws_iam_role_policy" "bifrost_usage" {
 
 # IAM propagation, before anything exercises the role. A policy written in this
 # same apply is not always enforceable on the next call.
+#
+# The triggers are not decoration: depends_on does not rerun a sleep when the
+# policy it waits for is updated rather than created, so widening the policy for a
+# second prefix would land a new external location against the old IAM state. A
+# policy edit now replaces the sleep, which re-runs the wait.
 resource "time_sleep" "bifrost_usage_iam_propagation" {
   depends_on      = [aws_iam_role_policy.bifrost_usage]
   create_duration = "15s"
+
+  triggers = {
+    policy = sha256(aws_iam_role_policy.bifrost_usage.policy)
+  }
 }
 
 resource "databricks_external_location" "bifrost_usage" {

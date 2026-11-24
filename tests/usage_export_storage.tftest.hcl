@@ -103,6 +103,29 @@ override_resource {
   }
 }
 
+# The two airflow principals with distinct plan-time ids. Their application ids are
+# computed from a live account, so without these the grant set's principals are
+# unknown at plan and no test could pin who reads the location. The values are
+# fake; what is asserted is that every principal in service_principals.tf's
+# airflow set appears, and nothing else does.
+override_resource {
+  target          = databricks_service_principal.airflow["airflow"]
+  override_during = plan
+  values = {
+    id             = "1111111111111111"
+    application_id = "00000000-0000-0000-0000-0000000000a1"
+  }
+}
+
+override_resource {
+  target          = databricks_service_principal.airflow["airflow_dev"]
+  override_during = plan
+  values = {
+    id             = "2222222222222222"
+    application_id = "00000000-0000-0000-0000-0000000000a2"
+  }
+}
+
 variables {
   databricks_account_id             = "00000000-0000-0000-0000-000000000000"
   workspace_id                      = "0000000000000000"
@@ -139,6 +162,15 @@ run "the_role_reads_both_exporters_prefixes" {
   }
 }
 
+run "a_policy_change_reruns_the_iam_propagation_wait" {
+  command = plan
+
+  assert {
+    condition     = time_sleep.bifrost_usage_iam_propagation.triggers["policy"] == sha256(aws_iam_role_policy.bifrost_usage.policy)
+    error_message = "The wait is keyed to the policy document. depends_on alone does not rerun it on an update, so widening the policy and creating the new location in one apply would validate against stale IAM state."
+  }
+}
+
 run "the_swarm_has_its_own_location_on_the_same_credential" {
   command = plan
 
@@ -150,11 +182,6 @@ run "the_swarm_has_its_own_location_on_the_same_credential" {
   assert {
     condition     = databricks_external_location.delegate_swarm_usage.credential_name == databricks_storage_credential.bifrost_usage.name && databricks_external_location.bifrost_usage.credential_name == databricks_storage_credential.bifrost_usage.name
     error_message = "Both locations share one credential, so one role and one trust admit the whole read path."
-  }
-
-  assert {
-    condition     = databricks_external_location.delegate_swarm_usage.name != databricks_external_location.bifrost_usage.name
-    error_message = "Two locations cannot share a name, and a copied block that kept the Bifrost name would collide on apply."
   }
 
   assert {
@@ -173,14 +200,30 @@ run "the_swarm_grants_sit_on_the_swarm_location" {
 
   assert {
     condition     = databricks_grants.bifrost_usage_external_location.external_location == databricks_external_location.bifrost_usage.id
-    error_message = "Two grant sets on one securable fight each other on the next apply, and the other location stays unreadable."
+    error_message = "The Bifrost grant set must still name the Bifrost location. Two grant sets on one securable fight on the next apply, and the other location stays unreadable."
   }
 }
 
-run "read_files_is_the_only_privilege_any_airflow_principal_gets" {
-  # Plan, not apply: a service principal's application id is computed, so neither
-  # grant set's principal list is known here. The privileges are.
+run "both_airflow_principals_read_the_swarm_location_and_no_one_else_does" {
   command = plan
+
+  assert {
+    condition = toset([
+      for grant in databricks_grants.delegate_swarm_usage_external_location.grant : grant.principal
+      ]) == toset([
+      for key, sp in databricks_service_principal.airflow : sp.application_id
+    ])
+    error_message = "Every airflow principal and no other principal. The two are pinned by the override block above, so a narrowed loop fails here."
+  }
+
+  assert {
+    condition = toset([
+      for grant in databricks_grants.delegate_swarm_usage_external_location.grant : grant.principal
+      ]) == toset([
+      for grant in databricks_grants.bifrost_usage_external_location.grant : grant.principal
+    ])
+    error_message = "The same readers as the Bifrost location, since both land in one bucket and one loader runs as each."
+  }
 
   assert {
     condition = alltrue([
@@ -188,13 +231,5 @@ run "read_files_is_the_only_privilege_any_airflow_principal_gets" {
       contains(grant.privileges, "READ_FILES") && length(grant.privileges) == 1
     ])
     error_message = "READ_FILES and nothing else: COPY INTO is a read, and nothing in Databricks writes these prefixes."
-  }
-
-  assert {
-    condition = alltrue([
-      for grant in databricks_grants.bifrost_usage_external_location.grant :
-      contains(grant.privileges, "READ_FILES") && length(grant.privileges) == 1
-    ])
-    error_message = "The Bifrost location's grant set must stay as it was, since the same principals read both."
   }
 }
