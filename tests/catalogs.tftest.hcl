@@ -163,9 +163,9 @@ run "raw_reads_in_the_clear_for_the_roles_that_must" {
 
   assert {
     condition = alltrue([
-      for p in ["CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"] : contains(local.raw_catalog_grants["admin"].privileges, p)
+      for p in ["CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"] : contains(local.raw_catalog_grants["admin_group"].privileges, p)
     ])
-    error_message = "admin sets up the ingestion pipelines that write raw as the person running them."
+    error_message = "The admin group sets up the ingestion pipelines that write raw as the person running them."
   }
 }
 
