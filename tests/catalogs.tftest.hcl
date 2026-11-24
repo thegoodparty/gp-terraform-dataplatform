@@ -76,6 +76,15 @@ mock_provider "aws" {
 
 mock_provider "astro" {}
 
+
+# Fixed so the membership test can compare ids at plan time.
+override_resource {
+  target          = databricks_group.role_ingestor
+  override_during = plan
+  values = {
+    id = "2222222222"
+  }
+}
 override_resource {
   target = databricks_sql_endpoint.sigma
 }
@@ -83,6 +92,8 @@ override_resource {
 override_resource {
   target = databricks_schema.model_predictions
 }
+
+
 
 variables {
   databricks_account_id             = "00000000-0000-0000-0000-000000000000"
@@ -155,6 +166,16 @@ run "raw_reads_in_the_clear_for_the_roles_that_must" {
   assert {
     condition     = !contains(local.raw_catalog_grants["transformer"].privileges, "MODIFY")
     error_message = "transformer reads raw and writes prod; it has no business modifying raw."
+  }
+
+  assert {
+    condition     = databricks_group_member.admin_group_in_ingestor.member_id == data.databricks_group.admin_group.id && databricks_group_member.admin_group_in_ingestor.group_id == databricks_group.role_ingestor.id
+    error_message = "The admin group reaches raw through ingestor, which is how its ingestion pipelines write."
+  }
+
+  assert {
+    condition     = !anytrue([for k, v in local.raw_catalog_grants : v.principal == data.databricks_group.admin_group.display_name])
+    error_message = "The admin group writes raw through ingestor; it must not hold raw grants of its own."
   }
 }
 

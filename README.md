@@ -72,6 +72,13 @@ prod reads a raw table, Unity Catalog evaluates the policy on the table
 underneath the view, and there is none, so the view would carry no mask. Nothing
 reads raw from prod today.
 
+Raw's source schemas are not managed here. `ingestor` holds `CREATE_SCHEMA` on
+raw, so whoever sets up a loader creates its schema (`raw.amplitude`,
+`raw.hubspot`, ...) and a new source needs no Terraform change, the way
+`transformer` creates its own schemas on dev. A schema is owned by the person
+who creates it, so hand it to the role straight after:
+`alter schema raw.<source> owner to ingestor`.
+
 `dev` holds a personal schema per user and a `ci_<pr>` schema per pull request,
 the latter created by dbt Cloud. No policy attaches to `dev` yet, so unlike
 prod, nothing masks a relation built there. That is bounded by the grants: the
@@ -390,11 +397,20 @@ Two ways out, and the choice is deliberate:
    More moving parts, and `open` does not propagate, so the exemption stays local
    to the object it is set on.
 
-Neither is applied here. This PR adds the policies and leaves the salt untagged,
-because the tag is a classification decision rather than a consequence of the
-policy shape, and because nobody is in `analyst` to be affected. The masking
-verification measures `length(governance.pseudonym(...))` first, before any other
-check, and it is what forces this decision.
+Neither is applied. The policies were added with the salt untagged, because the
+tag is a classification decision rather than a consequence of the policy shape.
+The masking verification measures `length(governance.pseudonym(...))` first,
+before any other check, and it is what forces this decision.
+
+Both options open the salt to every masked reader, because lifting the row
+filter lifts it for direct selects too, and a salt with a list of candidate
+emails reverses every identifier hash. The masking verification confirmed the
+failure: identifier columns on `gp_api_voters` error for analyst with
+`UNSUPPORTED_NESTED_ROW_OR_COLUMN_ACCESS_POLICY`. The way out that keeps the salt
+closed is to hold it as a Unity Catalog secret, read by a Python UDF that declares
+it in a `SECRETS` clause and so reads it with the function owner's rights. Callers
+then need only `EXECUTE`, and a SQL wrapper over that UDF is what the policy
+applies. That changes the mask function, which dbt builds.
 
 To rotate, change the `1` to the next version in both the `select` and the
 `not exists` test, run it, then point `pseudonym` at the new version: insert the
@@ -419,11 +435,13 @@ are nested inside `analyst`, so its reach is all five; `EXCEPT pii_viewer` takes
 and an `ingestor` exemption on this catalog would cover the marts as well as
 raw. Both arrive in the catalog split.
 
-**Applying these changes nothing for anyone yet.** The policies act only on
-principals in `TO`, and every role group is empty. Do not read a successful
-apply as "the roll-out is done": the day the first person joins `analyst`, a
-table nobody has classified returns no rows, and that is most of the catalog
-today.
+**The first members are the platform admins.** `admin group` sits in `ingestor`
+so its members can set up ingestion pipelines that write raw, and `ingestor` is
+nested in `analyst`, so every policy here applies to them, `github-action`
+included. A table nobody has classified returns them no rows, and that is most
+of the catalog today, so an empty admin query is not missing data. Identifier
+columns error rather than hash until the salt is read through a secret (above).
+An admin who needs clear values on prod needs `pii_viewer` as well.
 
 **The order matters, and it is a hard order.** The functions must exist before
 the policies are created, because a policy names one and a missing function
