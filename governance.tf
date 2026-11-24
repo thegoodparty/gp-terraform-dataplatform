@@ -55,20 +55,6 @@ resource "databricks_sql_table" "pseudonym_salt" {
   }
 }
 
-# The identifier mask reads this table, and Databricks refuses a mask that reads
-# a table with its own row filter. Unclassified, the closed_until_classified
-# filter lands here and every identifier column fails for a masked reader with
-# UNSUPPORTED_NESTED_ROW_OR_COLUMN_ACCESS_POLICY. Classifying it lifts the filter;
-# the grants note below already holds that the salt is not a secret from staff.
-resource "databricks_entity_tag_assignment" "pseudonym_salt_classified" {
-  entity_type = "tables"
-  entity_name = "${databricks_catalog.main.name}.${databricks_schema.governance.name}.${databricks_sql_table.pseudonym_salt.name}"
-  tag_key     = "classified"
-  tag_value   = "true"
-
-  depends_on = [databricks_tag_policy.governed]
-}
-
 # Authoritative, and safe here: this schema is created by this stack, and the
 # only other writer is dbt_cloud's own builds.
 #

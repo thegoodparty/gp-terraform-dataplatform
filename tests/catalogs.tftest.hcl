@@ -169,7 +169,7 @@ run "raw_reads_in_the_clear_for_the_roles_that_must" {
   }
 
   assert {
-    condition     = !contains(keys(local.raw_catalog_grants), "admin_group")
+    condition     = !anytrue([for k, v in local.raw_catalog_grants : v.principal == data.databricks_group.admin_group.display_name])
     error_message = "The admin group writes raw through ingestor; it must not hold raw grants of its own."
   }
 }
