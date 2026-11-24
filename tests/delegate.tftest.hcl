@@ -143,16 +143,18 @@ run "delegate_can_use_the_starter_warehouse" {
     error_message = "The delegate SP is named sp_delegate; everything that looks it up does so by name."
   }
 
-  # The assert pins delegate's own CAN_USE entry independently of inherited
-  # access: the workspace users group also grants CAN_USE on this warehouse, so
-  # losing this block would not by itself cut delegate off, and the test would
-  # still be guarding the wrong thing if it relied on that inheritance.
+  # Warehouse access is by role, so the analyst entry is what delegate's access will
+  # depend on once it joins. Pinning it here means a later membership PR cannot
+  # find the grant missing. The workspace users group also holds CAN_USE, so this
+  # covers the window before that membership lands. The name is spelled out rather
+  # than read from the group, so renaming the role fails here instead of quietly
+  # renaming the grant with it.
   assert {
     condition = anytrue([
       for ac in databricks_permissions.sql_warehouse_starter.access_control :
-      ac.service_principal_name == databricks_service_principal.delegate.application_id && ac.permission_level == "CAN_USE"
+      ac.group_name == "analyst" && ac.permission_level == "CAN_USE"
     ])
-    error_message = "The Starter warehouse ACL must name the delegate SP at CAN_USE."
+    error_message = "The Starter warehouse ACL must name the analyst role group at CAN_USE."
   }
 }
 

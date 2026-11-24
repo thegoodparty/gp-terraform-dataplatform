@@ -449,11 +449,11 @@ resource "databricks_permissions" "sql_warehouse_starter" {
     permission_level       = "CAN_USE"
   }
 
-  # The delegate SP runs its queries here. It is also covered by the users group's
-  # CAN_USE; naming it keeps a change to users from silently cutting delegate off.
+  # Warehouse access by role: analyst, the roles nested in it and delegate once it
+  # joins all reach Starter through this one entry, with no per-principal grant.
   access_control {
-    service_principal_name = databricks_service_principal.delegate.application_id
-    permission_level       = "CAN_USE"
+    group_name       = databricks_group.role_analyst.display_name
+    permission_level = "CAN_USE"
   }
 
   # Edge to the SPs' workspace assignments so the workspace-scoped grant doesn't run before
@@ -461,7 +461,7 @@ resource "databricks_permissions" "sql_warehouse_starter" {
   depends_on = [
     databricks_mws_permission_assignment.airflow,
     databricks_mws_permission_assignment.product_analytics,
-    databricks_mws_permission_assignment.delegate,
+    databricks_group.role_analyst,
   ]
 }
 
