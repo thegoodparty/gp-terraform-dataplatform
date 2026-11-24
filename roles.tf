@@ -63,6 +63,13 @@ resource "databricks_group_member" "transformer_in_pii_viewer" {
   member_id = databricks_group.role_transformer.id
 }
 
+# dbt Cloud's prod builds run as dbt_cloud, so it holds transformer's rights.
+resource "databricks_group_member" "dbt_cloud_in_transformer" {
+  provider  = databricks.account
+  group_id  = databricks_group.role_transformer.id
+  member_id = data.databricks_service_principal.dbt_cloud.id
+}
+
 resource "databricks_group_member" "ingestor_in_analyst" {
   provider  = databricks.account
   group_id  = databricks_group.role_analyst.id

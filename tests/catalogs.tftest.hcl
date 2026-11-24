@@ -177,6 +177,11 @@ run "raw_reads_in_the_clear_for_the_roles_that_must" {
     condition     = !anytrue([for k, v in local.raw_catalog_grants : v.principal == data.databricks_group.admin_group.display_name])
     error_message = "The admin group writes raw through ingestor; it must not hold raw grants of its own."
   }
+
+  assert {
+    condition     = contains(local.raw_catalog_grants["transformer"].privileges, "APPLY_TAG") && databricks_group_member.dbt_cloud_in_transformer.member_id == data.databricks_service_principal.dbt_cloud.id
+    error_message = "The prod build tags raw sources as dbt_cloud through transformer, so transformer needs APPLY_TAG and dbt_cloud must be in it."
+  }
 }
 
 run "dev_holds_personal_and_ci_work" {

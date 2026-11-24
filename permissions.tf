@@ -724,9 +724,11 @@ locals {
       principal  = databricks_group.role_ingestor.display_name
       privileges = ["USE_CATALOG", "USE_SCHEMA", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
     }
+    # APPLY_TAG: the prod build, which runs as dbt_cloud in transformer, stamps
+    # the `sensitive` tags the source YAML declares on raw loader tables.
     "transformer" = {
       principal  = databricks_group.role_transformer.display_name
-      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
+      privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA", "APPLY_TAG"]
     }
   }
 
