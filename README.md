@@ -390,11 +390,12 @@ Two ways out, and the choice is deliberate:
    More moving parts, and `open` does not propagate, so the exemption stays local
    to the object it is set on.
 
-Neither is applied here. This PR adds the policies and leaves the salt untagged,
-because the tag is a classification decision rather than a consequence of the
-policy shape, and because nobody is in `analyst` to be affected. The masking
-verification measures `length(governance.pseudonym(...))` first, before any other
-check, and it is what forces this decision.
+Option 1 is applied: `governance.tf` assigns the tag. The masking verification
+found the failure this section predicted: every identifier column on
+`gp_api_voters` errored for analyst with
+`UNSUPPORTED_NESTED_ROW_OR_COLUMN_ACCESS_POLICY`, because the mask's salt subquery
+hit the unclassified table's row filter. The verification measures
+`length(governance.pseudonym(...))` first, before any other check.
 
 To rotate, change the `1` to the next version in both the `select` and the
 `not exists` test, run it, then point `pseudonym` at the new version: insert the
