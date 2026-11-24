@@ -84,6 +84,10 @@ override_resource {
   target = databricks_schema.model_predictions
 }
 
+override_resource {
+  target = databricks_schema.amplitude_ingestion
+}
+
 variables {
   databricks_account_id             = "00000000-0000-0000-0000-000000000000"
   workspace_id                      = "0000000000000000"
