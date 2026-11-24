@@ -75,6 +75,15 @@ resource "databricks_group_member" "admin_in_analyst" {
   member_id = databricks_group.role_admin.id
 }
 
+# The platform admins set up Databricks ingestion pipelines, which write raw as
+# the person running them, so they take ingestor's write rights on raw. Already
+# added in the console; creating a membership that exists is a no-op SCIM add.
+resource "databricks_group_member" "admin_group_in_ingestor" {
+  provider  = databricks.account
+  group_id  = databricks_group.role_ingestor.id
+  member_id = data.databricks_group.admin_group.id
+}
+
 # Assigns the roles to the workspace (visibility only). Assume is granted separately.
 resource "databricks_mws_permission_assignment" "role_groups" {
   for_each = {

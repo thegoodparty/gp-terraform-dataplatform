@@ -11,8 +11,9 @@
 # inside it, so analyst's reach is all five, and EXCEPT pii_viewer takes
 # pii_viewer and the transformer nested inside it back out. Note which roles that
 # leaves masked: ingestor and admin are nested in analyst only, not in
-# pii_viewer, so they are subject to these policies like analyst is. Nobody is in
-# any of the five yet.
+# pii_viewer, so they are subject to these policies like analyst is. The platform
+# admins sit in ingestor to set up ingestion pipelines, so they read the marts
+# masked too.
 #
 # pii_services and ingestor are deliberately absent from EXCEPT. The first does
 # not exist yet and arrives in the catalog split, and a policy cannot name a

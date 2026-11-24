@@ -88,15 +88,7 @@ override_resource {
   target = databricks_schema.amplitude_ingestion
 }
 
-# A new principal's application_id is only known after apply, and these runs plan.
-override_resource {
-  target          = databricks_service_principal.databricks_ingestor
-  override_during = plan
-  values = {
-    id             = "2222222222"
-    application_id = "00000000-0000-0000-0000-000000000002"
-  }
-}
+
 
 variables {
   databricks_account_id             = "00000000-0000-0000-0000-000000000000"
@@ -172,15 +164,13 @@ run "raw_reads_in_the_clear_for_the_roles_that_must" {
   }
 
   assert {
-    condition = alltrue([
-      for p in ["CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"] : contains(local.raw_catalog_grants["databricks_ingestor"].privileges, p)
-    ])
-    error_message = "databricks_ingestor is what ingestion pipelines run as, so it must be able to write raw."
+    condition     = databricks_group_member.admin_group_in_ingestor.member_id == data.databricks_group.admin_group.id
+    error_message = "The admin group reaches raw through ingestor, which is how its ingestion pipelines write."
   }
 
   assert {
     condition     = !contains(keys(local.raw_catalog_grants), "admin_group")
-    error_message = "Pipelines write raw as databricks_ingestor; the admin group must not hold raw grants of its own."
+    error_message = "The admin group writes raw through ingestor; it must not hold raw grants of its own."
   }
 }
 
