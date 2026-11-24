@@ -143,8 +143,10 @@ run "delegate_can_use_the_starter_warehouse" {
     error_message = "The delegate SP is named sp_delegate; everything that looks it up does so by name."
   }
 
-  # The explicit grant, not the users group's, is what this asserts: delegate is
-  # a member of no group, so losing this block means losing its warehouse.
+  # The assert pins delegate's own CAN_USE entry independently of inherited
+  # access: the workspace users group also grants CAN_USE on this warehouse, so
+  # losing this block would not by itself cut delegate off, and the test would
+  # still be guarding the wrong thing if it relied on that inheritance.
   assert {
     condition = anytrue([
       for ac in databricks_permissions.sql_warehouse_starter.access_control :
@@ -157,18 +159,34 @@ run "delegate_can_use_the_starter_warehouse" {
 # delegate is created with no group membership on purpose, so that a plumbing
 # failure at follow-up wiring time cannot be mistaken for an access failure, and
 # so that it reads no data before it joins analyst. Membership is asserted by
-# scanning the sources: a databricks_group_member's ids are unknown at plan time,
-# so an assert on the resources themselves cannot be evaluated against mocks.
+# scanning the sources, because a databricks_group_member's ids are unknown at
+# plan time and an assert on the resources themselves cannot be evaluated
+# against mocks.
+#
+# The scan is a file allowlist, not an inspection of individual resource blocks,
+# because block matching misses a membership assembled elsewhere: a map for_each,
+# an interpolated member_id, or ids threaded through a locals map in a second
+# file all evade it. Instead, the set of root files allowed to name the delegate
+# SP at all is fixed here, and none of those files may contain a group member. A
+# membership has to name the principal somewhere, so any new mention lands on a
+# file outside the list and fails closed.
 run "delegate_joins_no_group" {
   command = plan
 
   assert {
     condition = alltrue([
-      for f in fileset(path.root, "*.tf") : alltrue([
-        for block in regexall("(?s)resource\\s+\"databricks_group_member\"[^{}]*\\{[^{}]*\\}", file("${path.root}/${f}")) :
-        !strcontains(block, "databricks_service_principal.delegate")
-      ])
+      for f in fileset(path.root, "*.tf") :
+      !strcontains(file("${path.root}/${f}"), "databricks_service_principal.delegate") ||
+      contains(["outputs.tf", "permissions.tf", "service_principals.tf"], f)
     ])
-    error_message = "No databricks_group_member may name databricks_service_principal.delegate; its analyst membership comes in a later PR."
+    error_message = "Only outputs.tf, permissions.tf and service_principals.tf may name databricks_service_principal.delegate; a membership built elsewhere would land in another file."
+  }
+
+  assert {
+    condition = alltrue([
+      for f in ["outputs.tf", "permissions.tf", "service_principals.tf"] :
+      !strcontains(file("${path.root}/${f}"), "databricks_group_member")
+    ])
+    error_message = "No file that names the delegate SP may also hold a databricks_group_member; its analyst membership comes in a later PR."
   }
 }
