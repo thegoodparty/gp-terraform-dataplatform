@@ -61,9 +61,10 @@ Terraform configuration for managing the Good Party data infrastructure:
 ### The raw and dev catalogs
 
 `raw` holds what the loaders write: Airbyte's streams, the L2 voter files, and
-the sources the pipelines produce. It is a separate catalog because Unity
-Catalog has no `DENY`, so the only way to keep a raw schema out of a masked
-reader's reach is for it to sit in a catalog that reader is not granted.
+the sources the pipelines produce. It is a separate catalog so that what reaches
+raw is one short list of exceptions, kept apart from prod's grants. Unity
+Catalog has no `DENY`, so keeping a masked reader out of raw rests entirely on
+what that reader is granted.
 Someone who needs raw in the clear reads it as `pii_viewer` or `transformer`.
 
 `analyst` reads prod through an allowlist, not through the catalog: `USE_CATALOG`
@@ -366,10 +367,12 @@ Two rules about that table:
   length instead.
 - **Its `classified` tag is the open question below, not a settled rule.** An
   earlier version of this section said "never tag it `classified`" on the grounds
-  that it "must stay closed to every masked principal". The reason is no longer
-  the whole story: analyst holds `USE_SCHEMA` and `EXECUTE` here and no `SELECT`,
-  so grants refuse its own reads of the table, but the row filter still closes it
-  for the function's subquery. Treat the tag as a decision waiting on the masking
+  that it "must stay closed to every masked principal". That reason changed with
+  the analyst allowlist: analyst holds `USE_SCHEMA` and `EXECUTE` here and no
+  `SELECT`, so a principal masked only through analyst cannot read this table
+  directly. A masked principal that holds `SELECT` through another grant can,
+  once the row filter stops closing it; today that is the admin group, through
+  data-engineers. Treat the tag as a decision waiting on the masking
   verification, described next.
 
 **The salt table versus the unclassified row filter. Read this before trusting a
@@ -393,9 +396,10 @@ Two ways out, and the choice is deliberate:
 
 1. **Tag `pseudonym_salt` `classified = true`.** One tag assignment on one
    Terraform-owned table. The subquery then reads, and the identifier mask works.
-   The cost is nil: the row filter applies only to `analyst`, which holds no
-   `SELECT` on this schema, so the tag exempts the table for the masked read
-   without opening a read path for anyone.
+   The cost: lifting the row filter on this table opens it to any masked
+   principal that also holds `SELECT` through another grant, today the admin
+   group through data-engineers. A principal masked only through `analyst` still
+   gets no direct read, because analyst holds no `SELECT` here.
 2. **Exempt it by a dedicated tag rather than by `classified`,** for example a
    table-level `open = true` with the row filter widened to
    `not has_tag_value('classified', 'true') and not has_tag_value('open', 'true')`.
