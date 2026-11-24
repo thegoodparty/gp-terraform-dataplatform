@@ -650,12 +650,10 @@ resource "databricks_grant" "ai_infra_read" {
 # catalog-wide SELECT today; pinning it here means narrowing that grant later
 # cannot silently break the finance build. Airbyte owns this schema, so a
 # singular grant: nothing here claims authority over its other grants.
-# APPLY_TAG is the fourth: the finance raw columns are declared `sensitive` in
-# the source YAML like any other, so the tag apply reaches this schema too.
 resource "databricks_grant" "airbyte_source_finance_dbt_cloud" {
   schema     = "${databricks_catalog.main.name}.airbyte_source_finance"
   principal  = data.databricks_service_principal.dbt_cloud.application_id
-  privileges = ["USE_SCHEMA", "SELECT", "APPLY_TAG"]
+  privileges = ["USE_SCHEMA", "SELECT"]
 }
 
 # =============================================================================
@@ -665,7 +663,8 @@ resource "databricks_grant" "airbyte_source_finance_dbt_cloud" {
 # the L2 seed declare, so tag propagation has something to carry the masks down
 # from. `alter table ... alter column ... set tags` needs APPLY TAG; dbt_cloud
 # already holds ASSIGN on the governed tags themselves, which is the other half.
-# APPLY TAG grants tagging only: no read, no write, no MANAGE.
+# APPLY TAG grants tagging only: no read, no write, no MANAGE. It goes to
+# transformer, which dbt_cloud is a member of, so the right sits on the role.
 #
 # Singular grants throughout. Every schema below carries grants this stack does
 # not own -- airbyte_source and airbyte_source_finance belong to the airbyte
@@ -679,24 +678,29 @@ locals {
     "er_source",
     "archives",
     "source_dsar",
+    "airbyte_source_finance",
   ]
 }
 
-resource "databricks_grant" "raw_source_schema_dbt_cloud_apply_tag" {
+resource "databricks_grant" "raw_source_schema_transformer_apply_tag" {
   for_each   = toset(local.raw_source_tag_schemas)
   schema     = "${databricks_catalog.main.name}.${each.value}"
-  principal  = data.databricks_service_principal.dbt_cloud.application_id
+  principal  = databricks_group.role_transformer.display_name
   privileges = ["APPLY_TAG"]
+
+  depends_on = [databricks_group_member.dbt_cloud_in_transformer]
 }
 
 # The Segment sources are declared in the same source YAML and will carry
 # `sensitive` columns as the remaining source tagging lands. Without this the
 # build's tag statement fails on those columns, and that fails the build.
-resource "databricks_grant" "segment_source_schema_dbt_cloud_apply_tag" {
+resource "databricks_grant" "segment_source_schema_transformer_apply_tag" {
   for_each   = toset(["gp_api", "web_app"])
   schema     = "${databricks_catalog.segment_storage.name}.${each.value}"
-  principal  = data.databricks_service_principal.dbt_cloud.application_id
+  principal  = databricks_group.role_transformer.display_name
   privileges = ["APPLY_TAG"]
+
+  depends_on = [databricks_group_member.dbt_cloud_in_transformer]
 }
 
 # =============================================================================
