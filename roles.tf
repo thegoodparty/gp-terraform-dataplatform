@@ -70,6 +70,13 @@ resource "databricks_group_member" "dbt_cloud_in_transformer" {
   member_id = data.databricks_service_principal.dbt_cloud.id
 }
 
+# delegate (Swarm and the PR reviewer) reads prod masked, as analyst.
+resource "databricks_group_member" "delegate_in_analyst" {
+  provider  = databricks.account
+  group_id  = databricks_group.role_analyst.id
+  member_id = databricks_service_principal.delegate.id
+}
+
 resource "databricks_group_member" "ingestor_in_analyst" {
   provider  = databricks.account
   group_id  = databricks_group.role_analyst.id

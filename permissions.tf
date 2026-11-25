@@ -449,8 +449,8 @@ resource "databricks_permissions" "sql_warehouse_starter" {
     permission_level       = "CAN_USE"
   }
 
-  # Warehouse access by role: analyst, the roles nested in it and delegate once it
-  # joins all reach Starter through this one entry, with no per-principal grant.
+  # Warehouse access by role: analyst and every role nested in it, delegate
+  # included, reach Starter through this one entry.
   access_control {
     group_name       = databricks_group.role_analyst.display_name
     permission_level = "CAN_USE"
