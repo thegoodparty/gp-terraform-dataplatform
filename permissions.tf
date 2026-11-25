@@ -819,14 +819,59 @@ resource "databricks_grants" "catalog_dev" {
 # Metastore permissions
 # =============================================================================
 
-# Singular grant: the metastore's other grants (workspace admins, account users)
-# are managed outside Terraform, and databricks_grants would revoke them.
 data "databricks_current_metastore" "this" {}
 
-# Lakeflow Connect pipelines running as ingestor record their source as external
-# lineage metadata, and skip it without this privilege.
-resource "databricks_grant" "metastore_ingestor" {
-  metastore  = data.databricks_current_metastore.this.id
-  principal  = databricks_group.role_ingestor.display_name
-  privileges = ["CREATE_EXTERNAL_METADATA"]
+# Authoritative, so every grant on the metastore is listed here. The
+# _workspace_admins_* groups are Databricks-generated, one per workspace, and
+# their grants mirror what Databricks gave them on creation.
+locals {
+  workspace_admin_metastore_privileges = [
+    "CREATE_CATALOG",
+    "CREATE_CLEAN_ROOM",
+    "CREATE_CONNECTION",
+    "CREATE_EXTERNAL_LOCATION",
+    "CREATE_PROVIDER",
+    "CREATE_RECIPIENT",
+    "CREATE_SHARE",
+    "CREATE_STORAGE_CREDENTIAL",
+  ]
+
+  metastore_grants = {
+    "workspace_admins_goodparty" = {
+      principal  = "_workspace_admins_goodparty_3578414625112071"
+      privileges = local.workspace_admin_metastore_privileges
+    }
+    "workspace_admins_workspace" = {
+      principal  = "_workspace_admins_workspace_2986564930173093"
+      privileges = local.workspace_admin_metastore_privileges
+    }
+    "workspace_admins_databricks_system_workspace" = {
+      principal  = "_workspace_admins_databricks_system_workspace_7474659467896334"
+      privileges = concat(local.workspace_admin_metastore_privileges, ["CREATE_SERVICE_CREDENTIAL"])
+    }
+    "account_users" = {
+      principal  = "account users"
+      privileges = ["USE_MARKETPLACE_ASSETS"]
+    }
+    # Lakeflow Connect pipelines running as ingestor record their source as
+    # external lineage metadata, and skip it without this privilege.
+    "ingestor" = {
+      principal  = databricks_group.role_ingestor.display_name
+      privileges = ["CREATE_EXTERNAL_METADATA"]
+    }
+  }
+}
+
+resource "databricks_grants" "metastore" {
+  metastore = data.databricks_current_metastore.this.id
+
+  dynamic "grant" {
+    for_each = local.metastore_grants
+    content {
+      principal  = grant.value.principal
+      privileges = grant.value.privileges
+    }
+  }
+
+  depends_on = [databricks_group.role_ingestor]
 }

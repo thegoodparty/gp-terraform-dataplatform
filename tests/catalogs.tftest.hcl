@@ -243,7 +243,16 @@ run "ingestion_pipelines_run_as_ingestor" {
   }
 
   assert {
-    condition     = contains(databricks_grant.metastore_ingestor.privileges, "CREATE_EXTERNAL_METADATA")
+    condition     = contains(local.metastore_grants["ingestor"].privileges, "CREATE_EXTERNAL_METADATA")
     error_message = "Pipelines running as ingestor need CREATE_EXTERNAL_METADATA to record source lineage."
+  }
+
+  # The metastore grants are authoritative, so dropping one of these revokes it.
+  assert {
+    condition = length(setsubtract(
+      ["workspace_admins_goodparty", "workspace_admins_workspace", "workspace_admins_databricks_system_workspace", "account_users"],
+      keys(local.metastore_grants)
+    )) == 0
+    error_message = "The metastore's pre-existing grants must stay listed, or apply revokes them."
   }
 }
