@@ -449,11 +449,19 @@ resource "databricks_permissions" "sql_warehouse_starter" {
     permission_level       = "CAN_USE"
   }
 
+  # Warehouse access by role: analyst, the roles nested in it and delegate once it
+  # joins all reach Starter through this one entry, with no per-principal grant.
+  access_control {
+    group_name       = databricks_group.role_analyst.display_name
+    permission_level = "CAN_USE"
+  }
+
   # Edge to the SPs' workspace assignments so the workspace-scoped grant doesn't run before
   # they're workspace members (matches sigma_pov/agent below).
   depends_on = [
     databricks_mws_permission_assignment.airflow,
     databricks_mws_permission_assignment.product_analytics,
+    databricks_group.role_analyst,
   ]
 }
 

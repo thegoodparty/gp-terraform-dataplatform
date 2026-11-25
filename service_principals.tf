@@ -160,6 +160,26 @@ resource "databricks_mws_permission_assignment" "gp_api" {
   permissions  = ["USER"]
 }
 
+# The delegate SP: one principal for both the Swarm agent and the PR reviewer.
+# An account admin creates its OAuth M2M secret by hand after apply. It joins
+# analyst in a later PR, so until then it can log in and use the Starter
+# warehouse (permissions.tf) but read no data.
+resource "databricks_service_principal" "delegate" {
+  provider     = databricks.account
+  display_name = "sp_delegate"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "databricks_mws_permission_assignment" "delegate" {
+  provider     = databricks.account
+  workspace_id = var.workspace_id
+  principal_id = databricks_service_principal.delegate.id
+  permissions  = ["USER"]
+}
+
 # GitHub OIDC federation for this repo's CI, which runs as the github-action SP
 # (data source in groups.tf). One subject per caller: PR plans, Deploy's plan on
 # main, and the apply job, which runs in the `production` environment.

@@ -106,6 +106,11 @@ output "gp_api_service_principal" {
   value       = databricks_service_principal.gp_api.application_id
 }
 
+output "delegate_service_principal" {
+  description = "Application (client) ID of the delegate service principal; the OAuth M2M client_id for Swarm and the PR reviewer"
+  value       = databricks_service_principal.delegate.application_id
+}
+
 output "gp_api_warehouse" {
   description = "Name and ID of the gp-api SQL warehouse; the ID is the app's JDBC/HTTP path"
   value = {
