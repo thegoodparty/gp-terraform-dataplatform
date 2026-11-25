@@ -93,3 +93,28 @@ resource "databricks_schema" "marts" {
     prevent_destroy = true
   }
 }
+
+# Created by the Amplitude Lakeflow Connect pipeline; imported to hand it to
+# ingestor, since a console-created schema is owned by whoever created it.
+import {
+  to = databricks_schema.raw_amplitude
+  id = "raw.amplitude"
+}
+
+resource "databricks_schema" "raw_amplitude" {
+  catalog_name = databricks_catalog.raw.name
+  name         = "amplitude"
+  owner        = databricks_group.role_ingestor.display_name
+  comment      = "Amplitude events and reference tables, written by the Amplitude ingestion pipeline"
+
+  properties = {
+    managed_by = "terraform"
+    purpose    = "raw_source"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [databricks_grants.catalog_raw]
+}

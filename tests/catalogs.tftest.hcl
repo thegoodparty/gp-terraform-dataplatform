@@ -93,6 +93,10 @@ override_resource {
   target = databricks_schema.model_predictions
 }
 
+override_resource {
+  target = databricks_schema.raw_amplitude
+}
+
 
 
 variables {
@@ -227,5 +231,19 @@ run "dev_holds_personal_and_ci_work" {
   assert {
     condition     = contains(local.dev_catalog_grants["dbt_cloud"].privileges, "CREATE_TABLE")
     error_message = "dbt Cloud materializes dev relations itself."
+  }
+}
+
+run "ingestion_pipelines_run_as_ingestor" {
+  command = plan
+
+  assert {
+    condition     = databricks_schema.raw_amplitude.owner == "ingestor"
+    error_message = "raw.amplitude is owned by ingestor, not by whoever created it in the console."
+  }
+
+  assert {
+    condition     = contains(databricks_grant.metastore_ingestor.privileges, "CREATE_EXTERNAL_METADATA")
+    error_message = "Pipelines running as ingestor need CREATE_EXTERNAL_METADATA to record source lineage."
   }
 }
