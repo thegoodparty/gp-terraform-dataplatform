@@ -121,9 +121,10 @@ resource "databricks_grants" "catalog_main" {
   }
 
   # Governance roles. Each grant is what that role adds on top of inherited ones.
+  # analyst builds in dev; a prod schema comes from a build principal or an admin.
   grant {
     principal  = databricks_group.role_analyst.display_name
-    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT", "CREATE_SCHEMA"]
+    privileges = ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
   }
 
   grant {
@@ -749,8 +750,7 @@ locals {
   # relation built here from raw is held by these grants alone, not by a mask.
   dev_catalog_grants = {
     # USE_SCHEMA is not implied by creating a schema, and analyst has to use the
-    # one it creates on its own first run. prod's grant carries it for the same
-    # reason.
+    # one it creates on its own first run.
     "analyst" = {
       principal  = databricks_group.role_analyst.display_name
       privileges = ["USE_CATALOG", "USE_SCHEMA", "CREATE_SCHEMA"]
