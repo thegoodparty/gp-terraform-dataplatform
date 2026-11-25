@@ -814,3 +814,19 @@ resource "databricks_grants" "catalog_dev" {
     databricks_group.role_admin
   ]
 }
+
+# =============================================================================
+# Metastore permissions
+# =============================================================================
+
+# Singular grant: the metastore's other grants (workspace admins, account users)
+# are managed outside Terraform, and databricks_grants would revoke them.
+data "databricks_current_metastore" "this" {}
+
+# Lakeflow Connect pipelines running as ingestor record their source as external
+# lineage metadata, and skip it without this privilege.
+resource "databricks_grant" "metastore_ingestor" {
+  metastore  = data.databricks_current_metastore.this.id
+  principal  = databricks_group.role_ingestor.display_name
+  privileges = ["CREATE_EXTERNAL_METADATA"]
+}
