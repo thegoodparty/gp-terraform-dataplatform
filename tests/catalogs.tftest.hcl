@@ -229,3 +229,22 @@ run "dev_holds_personal_and_ci_work" {
     error_message = "dbt Cloud materializes dev relations itself."
   }
 }
+
+run "ingestor_may_use_the_hubspot_connection" {
+  command = plan
+
+  assert {
+    condition     = databricks_grant.hubspot_lakeflow_connection.foreign_connection == "hubspot_lakeflow"
+    error_message = "The HubSpot pipeline runs as ingestor and reads the hubspot_lakeflow connection."
+  }
+
+  assert {
+    condition     = databricks_grant.hubspot_lakeflow_connection.principal == databricks_group.role_ingestor.display_name
+    error_message = "The grant belongs to the ingestor role, not to a person or a dedicated principal."
+  }
+
+  assert {
+    condition     = databricks_grant.hubspot_lakeflow_connection.privileges == toset(["USE_CONNECTION"])
+    error_message = "USE_CONNECTION and nothing else: the pipeline uses the connection, it does not administer it."
+  }
+}
