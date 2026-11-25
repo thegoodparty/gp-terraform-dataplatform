@@ -161,9 +161,11 @@ resource "databricks_mws_permission_assignment" "gp_api" {
 }
 
 # The delegate SP: one principal for both the Swarm agent and the PR reviewer.
-# An account admin creates its OAuth M2M secret by hand after apply. It joins
-# analyst in a later PR, so until then it can log in and use the Starter
-# warehouse (permissions.tf) but read no data.
+# An account admin creates its OAuth M2M secret by hand after apply. Its only
+# role is analyst (roles.tf): it reads prod masked and, like any analyst, can
+# create its own schemas in dev. The secret is scoped `sql`, not the
+# read-only scope, which also blocks governance.pseudonym(); Terraform does not
+# record that scope, so regenerating the secret is a change to review.
 resource "databricks_service_principal" "delegate" {
   provider     = databricks.account
   display_name = "sp_delegate"
